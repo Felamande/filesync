@@ -1,5 +1,5 @@
 ﻿# Filesync
-----
+
 Filesync is a simple tool to sync files between multiple directory pairs.
 
 ## Install
@@ -8,7 +8,6 @@ go get github.com/Felamande/filesync
 go get github.com/Felamande/filesync/...
 go install github.com/Felamande/filesync
 ```
----
 
 ## Features
 * Synchronize simultaneously between directory pairs.
