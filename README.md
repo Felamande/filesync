@@ -2,7 +2,7 @@
 
 Filesync is a simple tool to sync files between multiple directory pairs.
 
-## Install
+## Install from source
 ```
 go get github.com/Felamande/filesync
 go get github.com/Felamande/filesync/...
