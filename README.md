@@ -23,9 +23,9 @@ go install github.com/Felamande/filesync
 * Cannot synchronize file removing properly.
 
 ## Thanks
-* [martini]https://github.com/go-martini/martini
-* [fsnotify]https://gopkg.in/fsnotify.v1
-* [log4go]https://code.google.com/p/log4go
+* [martini](https://github.com/go-martini/martini)
+* [fsnotify](https://gopkg.in/fsnotify.v1)
+* [log4go](https://code.google.com/p/log4go)
 
 
 
