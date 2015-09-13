@@ -2,10 +2,14 @@
 
 Filesync is a simple tool to sync files between multiple directory pairs.
 
-## Install
+## Install from source
 ```
-go get github.com/Felamande/filesync
-go get github.com/Felamande/filesync/...
+go get -u github.com/Felamande/filesync
+go install github.com/Felamande/filesync
+```
+or use [gopm](http://gopm.io) instead to cross the GFW.
+```
+gopm get -g -u github.com/Felamande/filesync 
 go install github.com/Felamande/filesync
 ```
 
