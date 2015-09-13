@@ -1,0 +1,19 @@
+[{
+	"left": "D:\\syncfrom",
+	"right": "E:\\syncto",
+	"config": {
+		"cover_same_name": true,
+		"sync_delete": false,
+		"sync_rename": false
+	}
+},
+{
+	"left": "/home/username/syncfrom",
+	"right": "/mnt/somedevice/syncto",
+	"config": {
+		"cover_same_name": true,
+		"sync_delete": false,
+		"sync_rename": false
+	}
+}
+]
