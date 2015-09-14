@@ -1,6 +1,6 @@
 [{
-	"left": "D:\\syncfrom",
-	"right": "E:\\syncto",
+	"left": "local://D:/syncfrom",
+	"right": "local://E:/syncto",
 	"config": {
 		"cover_same_name": true,
 		"sync_delete": false,
@@ -8,8 +8,8 @@
 	}
 },
 {
-	"left": "/home/username/syncfrom",
-	"right": "/mnt/somedevice/syncto",
+	"left": "local:///home/username/syncfrom",
+	"right": "local:///mnt/somedevice/syncto",
 	"config": {
 		"cover_same_name": true,
 		"sync_delete": false,
