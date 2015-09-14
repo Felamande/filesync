@@ -1,12 +1,9 @@
 package log
 
 import (
-	"database/sql"
-	"fmt"
 	"time"
 
 	"code.google.com/p/log4go"
-	_ "github.com/mattn/go-sqlite3"
 	//"io"
 )
 
@@ -34,74 +31,74 @@ type Logger interface {
 	Close() error
 }
 
-type DBLogger struct {
-	db *sql.DB
-}
+//type DBLogger struct {
+//	db *sql.DB
+//}
 
-func NewDBLogger(name string) *DBLogger {
+//func NewDBLogger(name string) *DBLogger {
 
-	db, err := sql.Open("sqlite3", name)
-	if err != nil {
-		return nil
-	}
+//	db, err := sql.Open("sqlite3", name)
+//	if err != nil {
+//		return nil
+//	}
 
-	db.Exec(`
-		create table log(time datetime not null,level tinyint not null,source text, message text)
-	`)
+//	db.Exec(`
+//		create table log(time datetime not null,level tinyint not null,source text, message text)
+//	`)
 
-	return &DBLogger{db}
-}
+//	return &DBLogger{db}
+//}
 
-func (l *DBLogger) write(lv Level, source, message string) {
-	tx, err := l.db.Begin()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	stmt, err := tx.Prepare("insert into log(time,level,source,message) values(?,?,?,?)")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer stmt.Close()
+//func (l *DBLogger) write(lv Level, source, message string) {
+//	tx, err := l.db.Begin()
+//	if err != nil {
+//		fmt.Println(err.Error())
+//		return
+//	}
+//	stmt, err := tx.Prepare("insert into log(time,level,source,message) values(?,?,?,?)")
+//	if err != nil {
+//		fmt.Println(err.Error())
+//		return
+//	}
+//	defer stmt.Close()
 
-	_, err = stmt.Exec(time.Now().Format("2006-01-02 15:04:05"), int(lv), source, message)
+//	_, err = stmt.Exec(time.Now().Format("2006-01-02 15:04:05"), int(lv), source, message)
 
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+//	if err != nil {
+//		fmt.Println(err.Error())
+//		return
+//	}
 
-	tx.Commit()
-}
+//	tx.Commit()
+//}
 
-func (l *DBLogger) Close() error {
-	return l.Close()
-}
+//func (l *DBLogger) Close() error {
+//	return l.Close()
+//}
 
-func (l *DBLogger) Debug(source, message string) {
-	l.write(DEBUG, source, message)
-	fmt.Printf("%v : %v", source, message)
-}
-func (l *DBLogger) Info(source, message string) {
-	l.write(INFO, source, message)
-}
+//func (l *DBLogger) Debug(source, message string) {
+//	l.write(DEBUG, source, message)
+//	fmt.Printf("%v : %v", source, message)
+//}
+//func (l *DBLogger) Info(source, message string) {
+//	l.write(INFO, source, message)
+//}
 
-func (l *DBLogger) Warn(source, message string) {
-	l.write(WARNING, source, message)
-}
+//func (l *DBLogger) Warn(source, message string) {
+//	l.write(WARNING, source, message)
+//}
 
-func (l *DBLogger) Critical(source, message string) {
-	l.write(CRITICAL, source, message)
-}
+//func (l *DBLogger) Critical(source, message string) {
+//	l.write(CRITICAL, source, message)
+//}
 
-func (l *DBLogger) Error(source, message string) {
-	l.write(ERROR, source, message)
-}
+//func (l *DBLogger) Error(source, message string) {
+//	l.write(ERROR, source, message)
+//}
 
-func (l *DBLogger) Panic(source, message string) {
-	l.write(PANIC, source, message)
-}
+//func (l *DBLogger) Panic(source, message string) {
+//	l.write(PANIC, source, message)
+//}
 
 type FileLogger struct {
 	logger4go *log4go.FileLogWriter
