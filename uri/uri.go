@@ -101,9 +101,7 @@ func (u *UriLocal) Mode() os.FileMode {
 }
 
 func (u *UriLocal) Exist() bool {
-	FullPath := u.host + u.path
-
-	fi, _ := os.Stat(FullPath)
+	fi, _ := os.Stat(u.Abs())
 	if fi != nil {
 		return true
 	}
@@ -156,7 +154,7 @@ func (u *UriLocal) OpenWrite() (io.WriteCloser, error) {
 	if u.IsDir() {
 		return nil, OpenError{u.Uri(), "is a directory."}
 	}
-	AbsPath := u.host + u.path
+	AbsPath := u.Abs()
 
 	if !filepath.IsAbs(AbsPath) {
 		return nil, OpenError{u.Uri(), "is not an absolute path."}
