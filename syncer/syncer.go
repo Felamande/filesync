@@ -347,7 +347,7 @@ func (p *SyncPair) handleRemove(lName string, IsDir bool) {
 			fmt.Println(err.Error())
 			time.Sleep(time.Second * 1)
 		} else {
-			break
+		breakfile: ///D:/Dev/gopath/src/github.com/Felamande/filesync/uri/uri.go
 		}
 	}
 
@@ -395,8 +395,3 @@ func exist(file string) bool {
 	_, err := os.Stat(file)
 	return !os.IsNotExist(err)
 }
-
-//
-//learn git.
-//
-//
