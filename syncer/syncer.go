@@ -397,6 +397,6 @@ func exist(file string) bool {
 }
 
 //
-//
+//learn git.
 //
 //
