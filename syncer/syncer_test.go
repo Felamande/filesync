@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	fsnotify "gopkg.in/fsnotify.v1"
 )
 
 type Test struct {
@@ -40,4 +42,19 @@ func TestMarshalConfig(t *testing.T) {
 	}
 	t.Log(config)
 
+}
+
+func TestRename(t *testing.T) {
+	w, _ := fsnotify.NewWatcher()
+	w.Add("./testdata")
+	for {
+		select {
+		case e := <-w.Events:
+			fmt.Println(e.Op, e.Name)
+			switch e.Op {
+			case fsnotify.Rename:
+				fmt.Println("rename: ", e.Name)
+			}
+		}
+	}
 }
