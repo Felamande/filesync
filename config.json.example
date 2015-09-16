@@ -1,19 +1,9 @@
 [{
-	"left": "local://D:/syncfrom",
-	"right": "local://E:/syncto",
+	"left": "local://D:/test/master",
+	"right": "local://D:/test/slave",
 	"config": {
 		"cover_same_name": true,
-		"sync_delete": false,
+		"sync_delete": true,
 		"sync_rename": false
 	}
-},
-{
-	"left": "local:///home/username/syncfrom",
-	"right": "local:///mnt/somedevice/syncto",
-	"config": {
-		"cover_same_name": true,
-		"sync_delete": false,
-		"sync_rename": false
-	}
-}
-]
+}]
