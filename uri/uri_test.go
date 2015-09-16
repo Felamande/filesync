@@ -1,6 +1,9 @@
 package uri
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 type Left interface {
 	Uri
@@ -98,4 +101,54 @@ func TestUriLocalOpen(t *testing.T) {
 }
 
 func TestOpenDir(t *testing.T) {
+
+}
+
+func TestWalk(t *testing.T) {
+	UriString := "local://D:/Dev/gopath/src/github.com/Felamande/filesync"
+	u, e := Parse(UriString)
+	if e != nil {
+		t.Log(e.Error())
+	}
+
+	e = u.Walk(
+		func(root, uri Uri) error {
+			t.Log("dir: ", uri.Abs())
+			if !uri.IsDir() {
+				t.Error("should be file: ", uri.Abs())
+			}
+
+			return nil
+		},
+		func(root, uri Uri) error {
+			t.Log("file: ", uri.Abs())
+			if uri.IsDir() {
+				t.Error("should be dir: ", uri.Abs())
+			}
+			return nil
+		},
+	)
+
+	if e != nil {
+		t.Log(e.Error())
+	}
+
+}
+
+func TestParentUri(t *testing.T) {
+	u, e := Parse("local://D:/dir1/dir2/test")
+	if e != nil {
+		t.Log(e.Error())
+		return
+	}
+
+	u, e = u.Parent()
+	if e != nil {
+		t.Log(e.Error())
+	}
+	t.Log(u.Abs(), "\n", u.Uri())
+
+	b, _ := json.Marshal(u)
+	t.Log(string(b))
+
 }

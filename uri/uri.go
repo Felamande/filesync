@@ -1,18 +1,20 @@
 package uri
 
 import (
+	"errors"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 )
 
 var protocolRegistry map[string]reflect.Type
 
-type Handler func(u Uri) error
+type Handler func(root Uri, u Uri) error
 
 func init() {
 	protocolRegistry = make(map[string]reflect.Type, 4)
@@ -25,16 +27,17 @@ type Uri interface {
 	Path() string
 	Uri() string
 	Abs() string
-	Parent() Uri
+	Parent() (Uri, error)
 
 	Create(bool, os.FileMode) error
 	OpenRead() (io.ReadCloser, error)
 	OpenWrite() (io.WriteCloser, error)
 	Remove() error
-	Walk(Handler) error
+	Walk(dh, fh Handler) error
 
 	IsDir() bool
 	Exist() bool
+	IsAbs() bool
 
 	Mode() os.FileMode
 	ModTime() time.Time
@@ -88,6 +91,10 @@ func (u *UriLocal) Abs() string {
 	return u.host + u.path
 }
 
+func (u *UriLocal) IsAbs() bool {
+	return filepath.IsAbs(u.Abs())
+}
+
 func (u *UriLocal) Scheme() string {
 	return u.scheme
 }
@@ -139,9 +146,6 @@ func (u *UriLocal) Create(IsDir bool, m os.FileMode) (err error) {
 }
 
 func (u *UriLocal) OpenRead() (io.ReadCloser, error) {
-	if u.IsDir() {
-		return nil, OpenError{u.Uri(), "is a directory."}
-	}
 	AbsPath := u.host + u.path
 
 	if !filepath.IsAbs(AbsPath) {
@@ -151,9 +155,6 @@ func (u *UriLocal) OpenRead() (io.ReadCloser, error) {
 
 }
 func (u *UriLocal) OpenWrite() (io.WriteCloser, error) {
-	if u.IsDir() {
-		return nil, OpenError{u.Uri(), "is a directory."}
-	}
 	AbsPath := u.Abs()
 
 	if !filepath.IsAbs(AbsPath) {
@@ -165,23 +166,59 @@ func (u *UriLocal) OpenWrite() (io.WriteCloser, error) {
 }
 
 func (u *UriLocal) Remove() error {
-	return os.Remove(u.host + u.path)
+	return os.Remove(u.Abs())
 }
 
-func (u *UriLocal) Walk(h Handler) error {
-	return nil
+func (u *UriLocal) Walk(dh, fh Handler) error {
+	if !u.IsDir() {
+		return errors.New("walk " + u.Abs() + ": is not a directory")
+	}
+
+	err := filepath.Walk(u.Abs(),
+		func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			path = strings.Replace(path, "\\", "/", -1)
+			urip, err := Parse(u.Scheme() + "://" + path)
+			if err != nil {
+				return err
+			}
+			if urip.IsDir() {
+				err = dh(u, urip)
+			} else {
+				err = fh(u, urip)
+			}
+
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+
+	return err
 }
 
 func (u *UriLocal) Path() string {
+
 	return u.path
 }
 
-func (u *UriLocal) Parent() Uri {
-	return nil
+func (u *UriLocal) Parent() (Uri, error) {
+	p := filepath.Dir(u.Abs())
+	p = strings.Replace(p, "\\", "/", -1)
+	return Parse(u.Scheme() + "://" + p)
 }
 
 func (u *UriLocal) IsDir() bool {
-	return false
+	fi, _ := os.Stat(u.Abs())
+	if fi == nil {
+		return false
+		//TODO
+	}
+
+	return fi.IsDir()
 }
 
 func (u *UriLocal) setHost(h string) {
