@@ -16,10 +16,12 @@ import (
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
-var Log log.Logger
+var logger log.Logger
 
 func init() {
-	Log = log.NewFileLogger("sync.log")
+	fi, _ := os.Stat(".")
+	os.Mkdir(".log", fi.Mode())
+	logger = log.NewFileLogger("./.log/sync.log")
 }
 
 type DirHandler func(string)
@@ -65,20 +67,20 @@ func New() *Syncer {
 //	Close() error
 //}
 func SetLogger(logger log.Logger) {
-	Log = logger
+	logger = logger
 }
 
 func (s *Syncer) readConfig() {
 
 	configFile, err := os.Open("config.json")
 	if err != nil {
-		Log.Warn("*Syncer.readConfig", err.Error())
+		logger.Warn("*Syncer.readConfig", err.Error())
 		return
 	}
 
 	JsonBytes, err := ioutil.ReadAll(configFile)
 	if err != nil {
-		Log.Warn("*Syncer.readConfig", err.Error())
+		logger.Warn("*Syncer.readConfig", err.Error())
 		return
 	}
 
@@ -87,23 +89,23 @@ func (s *Syncer) readConfig() {
 	err = json.Unmarshal(JsonBytes, &config.Pairs)
 
 	if err != nil {
-		Log.Warn("*Syncer.readConfig", err.Error())
+		logger.Warn("*Syncer.readConfig", err.Error())
 	}
 
 	if len(config.Pairs) == 0 {
-		Log.Info("&SyncPair.readConfig", "no pairs in config.json.")
+		logger.Info("&SyncPair.readConfig", "no pairs in config.json.")
 		return
 	}
 
 	for _, pair := range config.Pairs {
 		LeftUri, err := uri.Parse(pair.Left)
 		if err != nil {
-			Log.Error("*SyncPair.readConfig", err.Error())
+			logger.Error("*SyncPair.readConfig", err.Error())
 			return
 		}
 		RightUri, err := uri.Parse(pair.Right)
 		if err != nil {
-			Log.Error("*SyncPair.readConfig", err.Error())
+			logger.Error("*SyncPair.readConfig", err.Error())
 			return
 		}
 		s.SyncPairs = append(s.SyncPairs,
@@ -125,11 +127,11 @@ func (s *Syncer) Run() {
 	for _, pair := range s.SyncPairs {
 
 		if !pair.Left.IsAbs() || !pair.Left.IsAbs() {
-			Log.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}.Error())
+			logger.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}.Error())
 			continue
 		}
 		if !pair.Left.Exist() || !pair.Left.Exist() {
-			Log.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}.Error())
+			logger.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}.Error())
 			continue
 		}
 
@@ -145,12 +147,12 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 
 	lUri, err := uri.Parse(source)
 	if err != nil {
-		Log.Error("*Syncer.NewPair", "Parse source: "+err.Error())
+		logger.Error("*Syncer.NewPair", "Parse source: "+err.Error())
 		return err
 	}
 	rUri, err := uri.Parse(target)
 	if err != nil {
-		Log.Error("*Syncer.NewPair", "Parse target: "+err.Error())
+		logger.Error("*Syncer.NewPair", "Parse target: "+err.Error())
 		return err
 	}
 
@@ -160,18 +162,18 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 	}
 	pair.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		Log.Error("*SyncPair.NewPair", err.Error())
+		logger.Error("*SyncPair.NewPair", err.Error())
 		return err
 	}
 
 	if !pair.Left.IsAbs() || !pair.Left.IsAbs() {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}
-		Log.Warn("*Syncer.Run", err.Error())
+		logger.Warn("*Syncer.Run", err.Error())
 		return err
 	}
 	if !pair.Left.Exist() || !pair.Left.Exist() {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}
-		Log.Warn("*Syncer.Run", err.Error())
+		logger.Warn("*Syncer.Run", err.Error())
 		return err
 	}
 
@@ -187,7 +189,7 @@ func (p *SyncPair) BeginWatch() {
 
 	p.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		Log.Error("*SyncPair.BeginWatch", err.Error())
+		logger.Error("*SyncPair.BeginWatch", err.Error())
 		return
 	}
 
@@ -197,15 +199,15 @@ func (p *SyncPair) BeginWatch() {
 		func(root, lDir uri.Uri) error {
 			rDir, err := p.ToRight(lDir)
 			if err != nil {
-				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
 				return nil
 			}
 			err = p.watcher.Add(lDir.Abs())
 			if err != nil {
-				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
 				return nil
 			}
-			Log.Info("*SyncPair.BeginWatch@walkDir", "Add to watcher: "+lDir.Abs())
+			logger.Info("*SyncPair.BeginWatch@walkDir", "Add to watcher: "+lDir.Abs())
 			rDir.Create(true, lDir.Mode())
 			return nil
 
@@ -213,7 +215,7 @@ func (p *SyncPair) BeginWatch() {
 		func(root, lFile uri.Uri) error {
 			rFile, err := p.ToRight(lFile)
 			if err != nil {
-				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
 				return nil
 			}
 			if !rFile.Exist() {
@@ -228,11 +230,11 @@ func (p *SyncPair) BeginWatch() {
 	)
 
 	if err != nil {
-		Log.Info("*SyncPair.BeginWatch", err.Error())
+		logger.Info("*SyncPair.BeginWatch", err.Error())
 		return
 	}
 
-	Log.Info("*SyncPair.BeginWatch", "Add pair : "+p.Left.Uri()+" ==> "+p.Right.Uri())
+	logger.Info("*SyncPair.BeginWatch", "Add pair : "+p.Left.Uri()+" ==> "+p.Right.Uri())
 	p.loopMsg()
 }
 
@@ -245,12 +247,12 @@ func (p *SyncPair) loopMsg() {
 			UriString := p.formatLeftUriString(e.Name)
 			u, err := uri.Parse(UriString)
 			if err != nil {
-				Log.Error("*SyncPair.loopMsg@events", err.Error())
+				logger.Error("*SyncPair.loopMsg@events", err.Error())
 				continue
 			}
 			go p.handle(SyncMsg{e.Op, u}, tokens)
 		case e := <-p.watcher.Errors:
-			Log.Info("*SyncPair.looMsg@errors", e.Error())
+			logger.Info("*SyncPair.looMsg@errors", e.Error())
 
 		}
 
@@ -266,10 +268,10 @@ func (p *SyncPair) handle(msg SyncMsg, tokens chan bool) {
 		if msg.Left.IsDir() {
 			err := p.WatchLeft(msg.Left)
 			if err != nil {
-				Log.Error("*SyncPair.handle@watcher.Add", err.Error())
+				logger.Error("*SyncPair.handle@watcher.Add", err.Error())
 				return
 			}
-			Log.Info("*SyncPair.handle@switch", "Add to Watcher: "+msg.Left.Abs())
+			logger.Info("*SyncPair.handle@switch", "Add to Watcher: "+msg.Left.Abs())
 		}
 
 		p.handleCreateRight(msg.Left)
@@ -284,6 +286,11 @@ func (p *SyncPair) handle(msg SyncMsg, tokens chan bool) {
 			return
 		}
 		p.handleRemove(msg.Left)
+	case fsnotify.Rename:
+		if !p.Config.SyncRename {
+			return
+		}
+		p.handleRename(msg.Left)
 	}
 }
 
@@ -292,7 +299,7 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 
 	rFile, err := p.ToRight(lFile)
 	if err != nil {
-		Log.Error("*SyncPair.handleWrite@ToRight", err.Error())
+		logger.Error("*SyncPair.handleWrite@ToRight", err.Error())
 		return
 	}
 
@@ -323,13 +330,13 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 	fmt.Println("start copying:", lFile.Abs(), "==>", rFile.Abs())
 	io.Copy(rFd, lFd)
 	fmt.Println("finish copying:", lFile.Abs(), "==>", rFile.Abs())
-	Log.Info("*SyncPair.handleFile@io.Copy", "Sync file succesfully: "+lFile.Abs()+" ==> "+rFile.Abs())
+	logger.Info("*SyncPair.handleFile@io.Copy", "Sync file succesfully: "+lFile.Abs()+" ==> "+rFile.Abs())
 }
 
 func (p *SyncPair) handleCreateRight(lName uri.Uri) {
 	rName, err := p.ToRight(lName)
 	if err != nil {
-		Log.Error("*SyncPair.handleCreateRight", err.Error())
+		logger.Error("*SyncPair.handleCreateRight", err.Error())
 		return
 	}
 	for {
@@ -341,7 +348,7 @@ func (p *SyncPair) handleCreateRight(lName uri.Uri) {
 		}
 	}
 
-	Log.Info("*SyncPair.handleCreateFile@io.Copy", "Sync  succesfully: "+lName.Abs()+" ==> "+rName.Abs())
+	logger.Info("*SyncPair.handleCreateFile@io.Copy", "Sync  succesfully: "+lName.Abs()+" ==> "+rName.Abs())
 
 }
 
@@ -354,7 +361,7 @@ func (p *SyncPair) handleRemove(lName uri.Uri) {
 	fmt.Println(lName.Abs(), "removed")
 	rName, err := p.ToRight(lName)
 	if err != nil {
-		Log.Error("*SyncPair.handleRemove", err.Error())
+		logger.Error("*SyncPair.handleRemove", err.Error())
 		return
 	}
 
@@ -373,10 +380,20 @@ func (p *SyncPair) handleRemove(lName uri.Uri) {
 	}
 	fmt.Println(rName.Abs(), "removed")
 
-	Log.Info("*SyncPair.handleRemove", "Remove successfully: "+rName.Abs())
+	err = p.watcher.Remove(lName.Abs())
+	if err != nil {
+		logger.Warn("*syncPair.handleRemove", err.Error())
+	}
+
+	logger.Info("*SyncPair.handleRemove", "Remove successfully: "+rName.Abs())
 	return
 
 }
+
+func (p *SyncPair) handleRename(lName uri.Uri) {
+
+}
+
 func (p *SyncPair) ToRight(u uri.Uri) (uri.Uri, error) {
 	Uris := strings.Replace(u.Uri(), p.Left.Uri(), p.Right.Uri(), -1)
 	return uri.Parse(Uris)
