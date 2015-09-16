@@ -1,7 +1,9 @@
 package syncer
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -22,4 +24,20 @@ func TestSync(t *testing.T) {
 	//	ioutil.WriteFile("config.json", b, 777)
 	_, err := os.Stat(`E:\\Picturesl`)
 	fmt.Println(!os.IsNotExist(err))
+}
+
+func TestMarshalConfig(t *testing.T) {
+	b, e := ioutil.ReadFile(`D:\Dev\gopath\src\github.com\Felamande\filesync\testdata\config.json`)
+	if e != nil {
+		t.Log(e.Error())
+	}
+
+	var config SavedConfig = SavedConfig{}
+
+	e = json.Unmarshal(b, &config.Pairs)
+	if e != nil {
+		t.Log(e.Error())
+	}
+	t.Log(config)
+
 }

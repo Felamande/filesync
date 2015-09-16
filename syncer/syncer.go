@@ -6,10 +6,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/Felamande/filesync/uri"
 
 	"github.com/Felamande/filesync/log"
 	fsnotify "gopkg.in/fsnotify.v1"
@@ -31,16 +32,15 @@ type SyncConfig struct {
 }
 
 type SyncPair struct {
-	Left    string     `json:"left"`
-	Right   string     `json:"right"`
-	Config  SyncConfig `json:"config"`
+	Left    uri.Uri
+	Right   uri.Uri
+	Config  SyncConfig
 	watcher *fsnotify.Watcher
 }
 
 type SyncMsg struct {
-	Op       fsnotify.Op
-	FullName string
-	IsDir    bool
+	Op   fsnotify.Op
+	Left uri.Uri
 }
 
 type Syncer struct {
@@ -70,24 +70,51 @@ func SetLogger(logger log.Logger) {
 
 func (s *Syncer) readConfig() {
 
-	config, err := os.Open("config.json")
+	configFile, err := os.Open("config.json")
 	if err != nil {
 		Log.Warn("*Syncer.readConfig", err.Error())
 		return
 	}
 
-	JsonBytes, err := ioutil.ReadAll(config)
+	JsonBytes, err := ioutil.ReadAll(configFile)
 	if err != nil {
 		Log.Warn("*Syncer.readConfig", err.Error())
 		return
 	}
 
-	err = json.Unmarshal(JsonBytes, &s.SyncPairs)
+	var config SavedConfig = SavedConfig{}
+
+	err = json.Unmarshal(JsonBytes, &config.Pairs)
+
 	if err != nil {
 		Log.Warn("*Syncer.readConfig", err.Error())
 	}
 
-	fmt.Println(len(s.SyncPairs))
+	if len(config.Pairs) == 0 {
+		Log.Info("&SyncPair.readConfig", "no pairs in config.json.")
+		return
+	}
+
+	for _, pair := range config.Pairs {
+		LeftUri, err := uri.Parse(pair.Left)
+		if err != nil {
+			Log.Error("*SyncPair.readConfig", err.Error())
+			return
+		}
+		RightUri, err := uri.Parse(pair.Right)
+		if err != nil {
+			Log.Error("*SyncPair.readConfig", err.Error())
+			return
+		}
+		s.SyncPairs = append(s.SyncPairs,
+			SyncPair{
+				Left:   LeftUri,
+				Right:  RightUri,
+				Config: pair.Config,
+			},
+		)
+		fmt.Println(pair.Config)
+	}
 
 }
 
@@ -95,23 +122,14 @@ func (s *Syncer) Run() {
 
 	s.readConfig()
 
-	if len(s.SyncPairs) == 0 {
-		fmt.Println(len(s.SyncPairs))
-		Log.Info("*Syncer.Run", "No sync pair in config file.")
-		return
-	}
-
 	for _, pair := range s.SyncPairs {
 
-		if !pair.IsValid() {
-			Log.Warn("*Syncer.Run", PairNotValidError{pair.Left, pair.Right}.Error())
+		if !pair.Left.IsAbs() || !pair.Left.IsAbs() {
+			Log.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}.Error())
 			continue
 		}
-		fmt.Println(pair)
-
-		err := pair.ExistOrCreate()
-		if err != nil {
-			Log.Error("*Syncer.Run@*SyncPair.ExistOrCreate", err.Error())
+		if !pair.Left.Exist() || !pair.Left.Exist() {
+			Log.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}.Error())
 			continue
 		}
 
@@ -123,49 +141,44 @@ func (s *Syncer) Run() {
 
 }
 
-func (s *Syncer) NewPair(config SyncConfig, source, target string) (err error) {
+func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 
-	p := SyncPair{
-		Left:   source,
-		Right:  target,
-		Config: config,
-	}
-	if !p.IsValid() {
-		return PairNotValidError{source, target}
-	}
-
-	p.watcher, err = fsnotify.NewWatcher()
+	lUri, err := uri.Parse(source)
 	if err != nil {
-		Log.Error("*Syncer.NewPair", err.Error())
-		return nil
-	}
-
-	err = p.ExistOrCreate()
-	if err != nil {
-		Log.Error("*Syncer.NewPair@*SyncPair.ExistOrCreate", err.Error())
-		return
-	}
-
-	s.SyncPairs = append(s.SyncPairs, p)
-
-	go p.BeginWatch()
-
-	return nil
-}
-
-func (p *SyncPair) IsValid() bool {
-	return filepath.IsAbs(p.Left) && filepath.IsAbs(p.Right)
-}
-
-func (p *SyncPair) ExistOrCreate() error {
-	if !exist(p.Left) {
-		err := os.MkdirAll(p.Left, 0777)
+		Log.Error("*Syncer.NewPair", "Parse source: "+err.Error())
 		return err
 	}
-	if !exist(p.Right) {
-		err := os.MkdirAll(p.Right, 0777)
+	rUri, err := uri.Parse(target)
+	if err != nil {
+		Log.Error("*Syncer.NewPair", "Parse target: "+err.Error())
 		return err
 	}
+
+	pair := SyncPair{
+		Left:  lUri,
+		Right: rUri,
+	}
+	pair.watcher, err = fsnotify.NewWatcher()
+	if err != nil {
+		Log.Error("*SyncPair.NewPair", err.Error())
+		return err
+	}
+
+	if !pair.Left.IsAbs() || !pair.Left.IsAbs() {
+		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}
+		Log.Warn("*Syncer.Run", err.Error())
+		return err
+	}
+	if !pair.Left.Exist() || !pair.Left.Exist() {
+		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}
+		Log.Warn("*Syncer.Run", err.Error())
+		return err
+	}
+
+	s.SyncPairs = append(s.SyncPairs, pair)
+
+	go pair.BeginWatch()
+
 	return nil
 }
 
@@ -178,40 +191,49 @@ func (p *SyncPair) BeginWatch() {
 		return
 	}
 
-	fmt.Println("Start Walking: " + p.Left)
+	fmt.Println("Start Walking: " + p.Left.Abs())
 
-	walkDir(p.Left,
-		func(lDir string) {
-			err := p.watcher.Add(lDir)
+	err = p.Left.Walk(
+		func(root, lDir uri.Uri) error {
+			rDir, err := p.ToRight(lDir)
 			if err != nil {
-				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error()+" "+lDir)
-				return
+				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				return nil
 			}
-			Log.Info("*SyncPair.BeginWatch@walkDir", "Add to watcher: "+lDir)
-
-			p.handleCreateDir(lDir)
+			err = p.watcher.Add(lDir.Abs())
+			if err != nil {
+				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				return nil
+			}
+			Log.Info("*SyncPair.BeginWatch@walkDir", "Add to watcher: "+lDir.Abs())
+			rDir.Create(true, lDir.Mode())
+			return nil
 
 		},
-		func(lFile string) {
-			rFile := strings.Replace(lFile, p.Left, p.Right, -1)
-			lFi, _ := os.Stat(lFile)
-			rFi, err := os.Stat(rFile)
-			if os.IsNotExist(err) {
-				p.handleFile(lFile, true)
-				return
+		func(root, lFile uri.Uri) error {
+			rFile, err := p.ToRight(lFile)
+			if err != nil {
+				Log.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				return nil
 			}
-
-			if lFi.ModTime().After(rFi.ModTime()) {
-				p.handleFile(lFile, true)
-				return
+			if !rFile.Exist() {
+				rFile.Create(false, lFile.Mode())
+				p.handleWrite(rFile)
 			}
-
+			if lFile.ModTime().After(rFile.ModTime()) {
+				p.handleWrite(rFile)
+			}
+			return nil
 		},
 	)
 
-	Log.Info("*SyncPair.BeginWatch", "Add pair : "+p.Left+" ==> "+p.Right)
-	p.loopMsg()
+	if err != nil {
+		Log.Info("*SyncPair.BeginWatch", err.Error())
+		return
+	}
 
+	Log.Info("*SyncPair.BeginWatch", "Add pair : "+p.Left.Uri()+" ==> "+p.Right.Uri())
+	p.loopMsg()
 }
 
 func (p *SyncPair) loopMsg() {
@@ -220,13 +242,15 @@ func (p *SyncPair) loopMsg() {
 	for {
 		select {
 		case e := <-p.watcher.Events:
-			fi, err := os.Stat(e.Name)
-			if os.IsNotExist(err) {
+			UriString := p.formatLeftUriString(e.Name)
+			u, err := uri.Parse(UriString)
+			if err != nil {
+				Log.Error("*SyncPair.loopMsg@events", err.Error())
 				continue
 			}
-			go p.handle(SyncMsg{e.Op, e.Name, fi.IsDir()}, tokens)
+			go p.handle(SyncMsg{e.Op, u}, tokens)
 		case e := <-p.watcher.Errors:
-			Log.Info("*SyncPair.BeginWatch", e.Error())
+			Log.Info("*SyncPair.looMsg@errors", e.Error())
 
 		}
 
@@ -239,89 +263,77 @@ func (p *SyncPair) handle(msg SyncMsg, tokens chan bool) {
 
 	switch msg.Op {
 	case fsnotify.Create:
-		if msg.IsDir {
-			p.watcher.Add(msg.FullName)
-			Log.Info("*SyncPair.handle@switch", "Create dir and add to Watcher: "+msg.FullName)
-			p.handleCreateDir(msg.FullName)
-
-		} else {
-			Log.Info("*SyncPair.handle@switch", "Create file: "+msg.FullName)
-			p.handleFile(msg.FullName, false)
+		if msg.Left.IsDir() {
+			err := p.WatchLeft(msg.Left)
+			if err != nil {
+				Log.Error("*SyncPair.handle@watcher.Add", err.Error())
+				return
+			}
+			Log.Info("*SyncPair.handle@switch", "Add to Watcher: "+msg.Left.Abs())
 		}
+
+		p.handleCreateRight(msg.Left)
+
 	case fsnotify.Write:
-		if msg.IsDir {
+		if msg.Left.IsDir() {
 			return
 		}
-		p.handleFile(msg.FullName, true)
+		p.handleWrite(msg.Left)
 	case fsnotify.Remove:
 		if !p.Config.SyncDelete {
 			return
 		}
-		p.handleRemove(msg.FullName, msg.IsDir)
+		p.handleRemove(msg.Left)
 	}
 }
 
-func (p *SyncPair) handleFile(lFile string, ModWrite bool) {
+func (p *SyncPair) handleWrite(lFile uri.Uri) {
 	var err error
-	fi, err := os.Stat(lFile)
-	if err != nil {
-		Log.Warn("*SyncPair.handleCreateFile@os.Stat", err.Error()+" "+lFile)
-	}
-	rFile := strings.Replace(lFile, p.Left, p.Right, -1)
 
-	if rFile == lFile {
-		Log.Error("*SyncPair.handleCreateFile@strings.Replace", lFile+" is not in directory "+p.Left)
+	rFile, err := p.ToRight(lFile)
+	if err != nil {
+		Log.Error("*SyncPair.handleWrite@ToRight", err.Error())
 		return
 	}
 
-	if !ModWrite {
-		if exist(rFile) {
-			Log.Info("*SyncPair.handleCreateFile@exist", "file "+rFile+" alread exists")
-			return
-		}
-	}
 	//BUG unknown bug here causing panic.
-	lFd, err := os.OpenFile(lFile, os.O_RDWR|os.O_CREATE, fi.Mode())
+	lFd, err := lFile.OpenRead()
 	for {
 		if err != nil {
 			time.Sleep(time.Second * 1)
 		} else {
 			break
 		}
-		lFd, err = os.OpenFile(lFile, os.O_RDWR|os.O_CREATE, fi.Mode())
+		lFd, err = lFile.OpenRead()
 
 	}
 	defer lFd.Close()
 
-	rFd, err := os.OpenFile(rFile, os.O_RDWR|os.O_CREATE, fi.Mode())
+	rFd, err := rFile.OpenWrite()
 	for {
 		if err != nil {
 			time.Sleep(time.Second * 1)
 		} else {
 			break
 		}
-		rFd, err = os.OpenFile(rFile, os.O_RDWR|os.O_CREATE, fi.Mode())
+		rFd, err = rFile.OpenWrite()
 
 	}
 	defer rFd.Close()
-
+	fmt.Println("start copying:", lFile.Abs(), "==>", rFile.Abs())
 	io.Copy(rFd, lFd)
-	Log.Info("*SyncPair.handleFile@io.Copy", "Sync file succesfully: "+lFile+" ==> "+rFile)
+	fmt.Println("finish copying:", lFile.Abs(), "==>", rFile.Abs())
+	Log.Info("*SyncPair.handleFile@io.Copy", "Sync file succesfully: "+lFile.Abs()+" ==> "+rFile.Abs())
 }
 
-func (p *SyncPair) handleCreateDir(lDir string) {
-	fi, err := os.Stat(lDir)
+func (p *SyncPair) handleCreateRight(lName uri.Uri) {
+	rName, err := p.ToRight(lName)
 	if err != nil {
-		Log.Warn("*SyncPair.handleCreateFile@os.Stat", err.Error()+" "+lDir)
-	}
-
-	rDir := strings.Replace(lDir, p.Left, p.Right, -1)
-	if exist(rDir) {
+		Log.Error("*SyncPair.handleCreateRight", err.Error())
 		return
 	}
-
 	for {
-		err := os.MkdirAll(rDir, fi.Mode())
+		err := rName.Create(lName.IsDir(), lName.Mode())
 		if err == nil {
 			break
 		} else {
@@ -329,66 +341,70 @@ func (p *SyncPair) handleCreateDir(lDir string) {
 		}
 	}
 
-	Log.Info("*SyncPair.handleCreateFile@io.Copy", "Sync dir succesfully: "+lDir+" ==> "+rDir)
+	Log.Info("*SyncPair.handleCreateFile@io.Copy", "Sync  succesfully: "+lName.Abs()+" ==> "+rName.Abs())
 
 }
 
-func (p *SyncPair) handleRemove(lName string, IsDir bool) {
-	rName := strings.Replace(lName, p.Left, p.Right, -1)
-	_, err := os.Stat(rName)
+func (p *SyncPair) formatLeftUriString(name string) string {
+	name = strings.Replace(name, "\\", "/", -1)
+	return p.Left.Scheme() + "://" + name
+}
 
-	if os.IsNotExist(err) {
+func (p *SyncPair) handleRemove(lName uri.Uri) {
+	fmt.Println(lName.Abs(), "removed")
+	rName, err := p.ToRight(lName)
+	if err != nil {
+		Log.Error("*SyncPair.handleRemove", err.Error())
+		return
+	}
+
+	if !rName.Exist() {
 		return
 	}
 
 	for {
-		err := os.Remove(rName)
+		err := rName.Remove()
 		if err != nil {
 			fmt.Println(err.Error())
 			time.Sleep(time.Second * 1)
 		} else {
-		breakfile: ///D:/Dev/gopath/src/github.com/Felamande/filesync/uri/uri.go
+			break
 		}
 	}
+	fmt.Println(rName.Abs(), "removed")
 
-	Log.Info("*SyncPair.handleRemove", "Remove successfully: "+rName)
+	Log.Info("*SyncPair.handleRemove", "Remove successfully: "+rName.Abs())
 	return
+
+}
+func (p *SyncPair) ToRight(u uri.Uri) (uri.Uri, error) {
+	Uris := strings.Replace(u.Uri(), p.Left.Uri(), p.Right.Uri(), -1)
+	return uri.Parse(Uris)
+
+}
+
+func (p *SyncPair) WatchLeft(left uri.Uri) error {
+	for {
+		err := p.watcher.Add(left.Abs())
+		if err != nil {
+			fmt.Println("file occupied: " + err.Error())
+			err = p.watcher.Add(left.Abs())
+		} else {
+			break
+		}
+	}
+	return nil
 
 }
 
 type PairNotValidError struct {
-	Left  string
-	Right string
+	Left    string
+	Right   string
+	Message string
 }
 
 func (e PairNotValidError) Error() string {
-	return "Pair not valid :" + e.Left + " ==> " + e.Right
-}
-
-func walkDirTranverse(Name string, dh DirHandler, fh FileHandler) {
-
-	fis, _ := ioutil.ReadDir(Name)
-
-	if len(fis) == 0 {
-		fmt.Println("no dir in: " + Name)
-		return
-	}
-	for _, fi := range fis {
-		if !fi.IsDir() {
-			fh(Name + "\\" + fi.Name())
-			continue
-		}
-
-		FullDirName := Name + "\\" + fi.Name()
-		dh(FullDirName)
-		walkDirTranverse(FullDirName, dh, fh)
-	}
-
-}
-
-func walkDir(Name string, dh DirHandler, fh FileHandler) {
-	walkDirTranverse(Name, dh, fh)
-	dh(Name)
+	return e.Message + ": " + e.Left + " ==> " + e.Right
 }
 
 func exist(file string) bool {
