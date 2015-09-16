@@ -1,7 +1,7 @@
 package uri
 
 import (
-	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -113,7 +113,6 @@ func TestWalk(t *testing.T) {
 
 	e = u.Walk(
 		func(root, uri Uri) error {
-			t.Log("dir: ", uri.Abs())
 			if !uri.IsDir() {
 				t.Error("should be file: ", uri.Abs())
 			}
@@ -121,7 +120,6 @@ func TestWalk(t *testing.T) {
 			return nil
 		},
 		func(root, uri Uri) error {
-			t.Log("file: ", uri.Abs())
 			if uri.IsDir() {
 				t.Error("should be dir: ", uri.Abs())
 			}
@@ -142,13 +140,12 @@ func TestParentUri(t *testing.T) {
 		return
 	}
 
-	u, e = u.Parent()
+	p, e := u.Parent()
 	if e != nil {
 		t.Log(e.Error())
 	}
-	t.Log(u.Abs(), "\n", u.Uri())
-
-	b, _ := json.Marshal(u)
-	t.Log(string(b))
+	if !strings.Contains(u.Abs(), p.Abs()) {
+		t.Error(p.Abs(), "is not the parent dir.")
+	}
 
 }
