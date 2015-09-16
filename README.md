@@ -23,8 +23,7 @@ go install github.com/Felamande/filesync
 * Support different protocols. By now, it can only sync file locally.
 
 ## Known issues
-* On windows, when some programs create temprorary files of an editing file and then remove them, the filesync program will crash.
-* Cannot synchronize file removing properly.
+* On windows, some program cannot save files that are occupied by the filesync program.
 
 ## Thanks
 * [martini](https://github.com/go-martini/martini)
