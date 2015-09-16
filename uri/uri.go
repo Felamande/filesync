@@ -19,6 +19,7 @@ type Handler func(root Uri, u Uri) error
 func init() {
 	protocolRegistry = make(map[string]reflect.Type, 4)
 	protocolRegistry["local"] = reflect.TypeOf((*UriLocal)(nil)).Elem()
+	protocolRegistry["ftp"] = reflect.TypeOf((*UriFtp)(nil)).Elem()
 }
 
 type Uri interface {
@@ -33,7 +34,7 @@ type Uri interface {
 	OpenRead() (io.ReadCloser, error)
 	OpenWrite() (io.WriteCloser, error)
 	Remove() error
-	Walk(dh, fh Handler) error
+	Walk(dh, fh Handler) error //dh is the handler to handle a directory,and fh is the handler to handle a file.
 
 	IsDir() bool
 	Exist() bool
