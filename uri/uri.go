@@ -117,9 +117,9 @@ func (u *UriLocal) Exist() bool {
 }
 
 func (u *UriLocal) ModTime() time.Time {
-	fi, err := os.Stat(u.host + u.path)
-	if err != nil {
-		return time.Now()
+	fi, _ := os.Stat(u.host + u.path)
+	if fi == nil {
+		return time.Date(1970, time.January, 1, 0, 0, 0, 0, time.Local)
 	}
 	return fi.ModTime()
 }
