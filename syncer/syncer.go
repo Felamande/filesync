@@ -38,6 +38,7 @@ type SyncPair struct {
 	Right   uri.Uri
 	Config  SyncConfig
 	watcher *fsnotify.Watcher
+	tokens  chan bool
 }
 
 type SyncMsg struct {
@@ -188,6 +189,7 @@ func (p *SyncPair) BeginWatch() {
 	var err error
 
 	p.watcher, err = fsnotify.NewWatcher()
+	p.tokens = make(chan bool, runtime.NumCPU())
 	if err != nil {
 		logger.Error("*SyncPair.BeginWatch", err.Error())
 		return
@@ -197,34 +199,19 @@ func (p *SyncPair) BeginWatch() {
 
 	err = p.Left.Walk(
 		func(root, lDir uri.Uri) error {
-			rDir, err := p.ToRight(lDir)
-			if err != nil {
-				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
-				return nil
-			}
+
 			err = p.watcher.Add(lDir.Abs())
 			if err != nil {
 				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
 				return nil
 			}
 			logger.Info("*SyncPair.BeginWatch@walkDir", "Add to watcher: "+lDir.Abs())
-			rDir.Create(true, lDir.Mode())
+			p.handleCreate(lDir)
 			return nil
 
 		},
 		func(root, lFile uri.Uri) error {
-			rFile, err := p.ToRight(lFile)
-			if err != nil {
-				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
-				return nil
-			}
-			if !rFile.Exist() {
-				rFile.Create(false, lFile.Mode())
-				p.handleWrite(rFile)
-			}
-			if lFile.ModTime().After(rFile.ModTime()) {
-				p.handleWrite(rFile)
-			}
+			p.handleCreate(lFile)
 			return nil
 		},
 	)
@@ -239,7 +226,7 @@ func (p *SyncPair) BeginWatch() {
 }
 
 func (p *SyncPair) loopMsg() {
-	tokens := make(chan bool, runtime.NumCPU())
+	p.tokens = make(chan bool, runtime.NumCPU())
 
 	for {
 		select {
@@ -250,7 +237,7 @@ func (p *SyncPair) loopMsg() {
 				logger.Error("*SyncPair.loopMsg@events", err.Error())
 				continue
 			}
-			go p.handle(SyncMsg{e.Op, u}, tokens)
+			go p.handle(SyncMsg{e.Op, u})
 		case e := <-p.watcher.Errors:
 			logger.Info("*SyncPair.looMsg@errors", e.Error())
 
@@ -259,9 +246,9 @@ func (p *SyncPair) loopMsg() {
 	}
 }
 
-func (p *SyncPair) handle(msg SyncMsg, tokens chan bool) {
-	tokens <- true
-	defer func() { <-tokens }()
+func (p *SyncPair) handle(msg SyncMsg) {
+	p.tokens <- true
+	defer func() { <-p.tokens }()
 
 	switch msg.Op {
 	case fsnotify.Create:
@@ -274,7 +261,7 @@ func (p *SyncPair) handle(msg SyncMsg, tokens chan bool) {
 			logger.Info("*SyncPair.handle@switch", "Add to Watcher: "+msg.Left.Abs())
 		}
 
-		p.handleCreateRight(msg.Left)
+		p.handleCreate(msg.Left)
 
 	case fsnotify.Write:
 		if msg.Left.IsDir() {
@@ -303,52 +290,51 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 		return
 	}
 
-	//BUG unknown bug here causing panic.
-	lFd, err := lFile.OpenRead()
-	for {
-		if err != nil {
-			time.Sleep(time.Second * 1)
-		} else {
-			break
-		}
-		lFd, err = lFile.OpenRead()
-
-	}
-	defer lFd.Close()
-
-	rFd, err := rFile.OpenWrite()
-	for {
-		if err != nil {
-			time.Sleep(time.Second * 1)
-		} else {
-			break
-		}
-		rFd, err = rFile.OpenWrite()
-
-	}
-	defer rFd.Close()
 	fmt.Println("start copying:", lFile.Abs(), "==>", rFile.Abs())
-	io.Copy(rFd, lFd)
+
+	lFd, rFd := copyFile(rFile, lFile)
+	defer lFd.Close()
+	defer rFd.Close()
+
 	fmt.Println("finish copying:", lFile.Abs(), "==>", rFile.Abs())
 	logger.Info("*SyncPair.handleFile@io.Copy", "Sync file succesfully: "+lFile.Abs()+" ==> "+rFile.Abs())
 }
 
-func (p *SyncPair) handleCreateRight(lName uri.Uri) {
+func (p *SyncPair) handleCreate(lName uri.Uri) {
 	rName, err := p.ToRight(lName)
 	if err != nil {
 		logger.Error("*SyncPair.handleCreateRight", err.Error())
 		return
 	}
+
+	if !lName.ModTime().After(rName.ModTime()) {
+		fmt.Println(rName.Abs(), "The left is older or the right exist.")
+		return
+	} else {
+		fmt.Println(rName.Abs(), "the left is newer.")
+	}
+
 	for {
 		err := rName.Create(lName.IsDir(), lName.Mode())
 		if err == nil {
+
 			break
 		} else {
+			fmt.Println(err.Error())
 			time.Sleep(time.Second * 1)
 		}
 	}
 
-	logger.Info("*SyncPair.handleCreateFile@io.Copy", "Sync  succesfully: "+lName.Abs()+" ==> "+rName.Abs())
+	if rName.IsDir() {
+		return
+	}
+
+	//first time copy file.
+	lFd, rFd := copyFile(rName, lName)
+	defer lFd.Close()
+	defer rFd.Close()
+
+	logger.Info("*SyncPair.handleCreate@io.Copy", "Sync  succesfully: "+lName.Abs()+" ==> "+rName.Abs())
 
 }
 
@@ -391,7 +377,7 @@ func (p *SyncPair) handleRemove(lName uri.Uri) {
 }
 
 func (p *SyncPair) handleRename(lName uri.Uri) {
-
+	fmt.Println(lName.Abs(), "rename")
 }
 
 func (p *SyncPair) ToRight(u uri.Uri) (uri.Uri, error) {
@@ -427,4 +413,31 @@ func (e PairNotValidError) Error() string {
 func exist(file string) bool {
 	_, err := os.Stat(file)
 	return !os.IsNotExist(err)
+}
+
+func copyFile(rFile, lFile uri.Uri) (io.ReadCloser, io.WriteCloser) {
+	var err error
+	lFd, err := lFile.OpenRead()
+	for {
+		if err != nil {
+			time.Sleep(time.Second * 1)
+		} else {
+			break
+		}
+		lFd, err = lFile.OpenRead()
+
+	}
+
+	rFd, err := rFile.OpenWrite()
+	for {
+		if err != nil {
+			time.Sleep(time.Second * 1)
+		} else {
+			break
+		}
+		rFd, err = rFile.OpenWrite()
+
+	}
+	io.Copy(rFd, lFd)
+	return lFd, rFd
 }
