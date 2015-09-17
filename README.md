@@ -15,15 +15,16 @@ go install github.com/Felamande/filesync
 
 ## Features
 * Synchronize simultaneously from left directory to right directory.
-* Install as system service.
-* Run in system tray.
-* A web frontend dashboard.
+* Install as a system service.
+* Run in the system tray.
+* An easy-to-use dashboard.
 
 ## TODO
 * Support different protocols. By now, it can only sync file locally.
 
 ## Known issues
 * On windows, some program cannot save files that are occupied by the filesync program.
+* if some temp files are created in the left dir and then be removed, those ones synchronized to the right directory won't.
 
 ## Thanks
 * [martini](https://github.com/go-martini/martini)
