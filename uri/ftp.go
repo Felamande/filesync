@@ -5,7 +5,7 @@ import (
 )
 
 type UriFtp struct {
-	conn net.Conn
+	conn   net.Conn
 	scheme string
 	path   string
 	host   string
@@ -15,4 +15,6 @@ func (u *UriFtp) Scheme() string {
 	return "ftp"
 }
 
-func(u *UriFtp)
+func (u *UriFtp) Host() string {
+	return ""
+}
