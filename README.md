@@ -27,7 +27,6 @@ run ```filesync -help``` to get help.
 * On windows, some program cannot save files that are occupied by the filesync program.
 * if some temp files are created in the left dir and then be removed, those ones synchronized to the right directory won't.
 * The service won't start when first installed using the command line, a manual control or a system restart is required.
-* The service will crash when stopped.
 
 ## Thanks
 * [martini](https://github.com/go-martini/martini)
