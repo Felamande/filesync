@@ -24,6 +24,11 @@ func main() {
 		return
 	}
 
+	if flag.Lookup("run") == nil && flag.Lookup("svcctl") == nil && flag.Lookup("help") == nil {
+		flag.Usage()
+		return
+	}
+
 	if *help {
 		flag.Usage()
 		return
