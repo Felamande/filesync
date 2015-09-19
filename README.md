@@ -1,6 +1,7 @@
 ﻿# Filesync
 
 Filesync is a simple tool to sync files between multiple uri pairs.
+中文[README](https://github.com/Felamande/filesync/blob/master/README.zh-cn.md)
 
 ## Install from source
 ```
