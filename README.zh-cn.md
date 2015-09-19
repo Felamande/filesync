@@ -26,7 +26,7 @@ go install github.com/Felamande/filesync
 ## 已知的问题
 * 某些程序使用临时文件编辑原文件时，可能无法保存到原文件，因为filesync正在占用该文件。出现的情况较少，只针对特定少数几个程序。
 * 某些程序创建临时文件编辑原文件时，filesync会将临时文件也同步到另一边地址里并且可能不会删除这些已经同步的临时文件.
-* 第一次使用命令行安装并运行filesync服务时，服务安装成功但不会开始运行，需要手工启动服务或等待下一次重启。Windows用户可以使用Win+R打开service.msc找到名为"FileSync Service"的服务用右键启动。
+* 第一次使用命令行安装并运行filesync服务时，服务安装成功但不会开始运行，需要手工启动服务或等待下一次重启。Windows用户可以使用Win+R打开services.msc找到名为"FileSync Service"的服务用右键启动。
 
 ## 本项目用到的开源项目
 * [martini](https://github.com/go-martini/martini)
