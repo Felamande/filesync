@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	fsnotify "gopkg.in/fsnotify.v1"
+	"github.com/Felamande/filesync/uri"
 )
 
 type Test struct {
@@ -45,16 +45,68 @@ func TestMarshalConfig(t *testing.T) {
 }
 
 func TestRename(t *testing.T) {
-	w, _ := fsnotify.NewWatcher()
-	w.Add("./testdata")
-	for {
-		select {
-		case e := <-w.Events:
-			fmt.Println(e.Op, e.Name)
-			switch e.Op {
-			case fsnotify.Rename:
-				fmt.Println("rename: ", e.Name)
-			}
-		}
+
+}
+
+func TestToRight(t *testing.T) {
+	ln, _ := uri.Parse("local://D:/pictures/")
+	rn, _ := uri.Parse("local://E:/pictures")
+	p := &SyncPair{
+		Left:  ln,
+		Right: rn,
 	}
+	lnn, _ := uri.Parse("local://D:/pictures/2015-2.jpg")
+	rnn, err := p.ToRight(lnn)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if rnn.Uri() != "local://E:/pictures/2015-2.jpg" {
+		t.Error("ToRight: " + rnn.Uri())
+	}
+
+	ln, _ = uri.Parse("local://D:/pictures/")
+	rn, _ = uri.Parse("local://E:/pictures/")
+	p = &SyncPair{
+		Left:  ln,
+		Right: rn,
+	}
+	lnn, _ = uri.Parse("local://D:/pictures/2015-2.jpg")
+	rnn, err = p.ToRight(lnn)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if rnn.Uri() != "local://E:/pictures/2015-2.jpg" {
+		t.Error("ToRight: " + rnn.Uri())
+	}
+
+	ln, _ = uri.Parse("local://D:/pictures")
+	rn, _ = uri.Parse("local://E:/pictures")
+	p = &SyncPair{
+		Left:  ln,
+		Right: rn,
+	}
+	lnn, _ = uri.Parse("local://D:/pictures/2015-2.jpg")
+	rnn, err = p.ToRight(lnn)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if rnn.Uri() != "local://E:/pictures/2015-2.jpg" {
+		t.Error("ToRight: " + rnn.Uri())
+	}
+
+	ln, _ = uri.Parse("local://D:/pictures")
+	rn, _ = uri.Parse("local://E:/pictures/")
+	p = &SyncPair{
+		Left:  ln,
+		Right: rn,
+	}
+	lnn, _ = uri.Parse("local://D:/pictures/2015-2.jpg")
+	rnn, err = p.ToRight(lnn)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if rnn.Uri() != "local://E:/pictures/2015-2.jpg" {
+		t.Error("ToRight: " + rnn.Uri())
+	}
+
 }

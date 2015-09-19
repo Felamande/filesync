@@ -46,12 +46,12 @@ type SyncMsg struct {
 }
 
 type Syncer struct {
-	SyncPairs []SyncPair
+	SyncPairs []*SyncPair
 }
 
 func New() *Syncer {
 	return &Syncer{
-		SyncPairs: []SyncPair{},
+		SyncPairs: []*SyncPair{},
 	}
 }
 
@@ -89,7 +89,7 @@ func (s *Syncer) Run(config SavedConfig) {
 			return
 		}
 		s.SyncPairs = append(s.SyncPairs,
-			SyncPair{
+			&SyncPair{
 				Left:   LeftUri,
 				Right:  RightUri,
 				Config: pair.Config,
@@ -107,9 +107,10 @@ func (s *Syncer) Run(config SavedConfig) {
 			logger.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}.Error())
 			continue
 		}
+		fmt.Println("range: ", pair.Left.Uri())
 
-		func(p SyncPair) {
-			go p.BeginWatch()
+		go func(p *SyncPair) {
+			p.BeginWatch()
 		}(pair)
 
 	}
@@ -174,7 +175,7 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 		return err
 	}
 
-	pair := SyncPair{
+	pair := &SyncPair{
 		Left:  lUri,
 		Right: rUri,
 	}
@@ -197,7 +198,9 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 
 	s.SyncPairs = append(s.SyncPairs, pair)
 
-	go pair.BeginWatch()
+	go func(p *SyncPair) {
+		p.BeginWatch()
+	}(pair)
 
 	return nil
 }
@@ -216,7 +219,7 @@ func (p *SyncPair) BeginWatch() {
 
 	err = p.Left.Walk(
 		func(root, lDir uri.Uri) error {
-
+			//fmt.Println("now: " + lDir.Abs())
 			err = p.WatchLeft(lDir)
 			if err != nil {
 				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
@@ -228,17 +231,20 @@ func (p *SyncPair) BeginWatch() {
 
 		},
 		func(root, lFile uri.Uri) error {
+			//fmt.Println("now: " + lFile.Abs())
 			p.handleCreate(lFile)
 			return nil
 		},
 	)
 
 	if err != nil {
+		fmt.Println("walk: ", err)
 		logger.Info("*SyncPair.BeginWatch", err.Error())
 		return
 	}
 
 	logger.Info("*SyncPair.BeginWatch", "Add pair : "+p.Left.Uri()+" ==> "+p.Right.Uri())
+	fmt.Println("end Walking: " + p.Left.Uri())
 	p.loopMsg()
 }
 
@@ -320,24 +326,20 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 func (p *SyncPair) handleCreate(lName uri.Uri) {
 	rName, err := p.ToRight(lName)
 	if err != nil {
-		logger.Error("*SyncPair.handleCreateRight", err.Error())
+		logger.Error("*SyncPair.handleCreate@ToRight", err.Error())
 		return
 	}
 
 	if !lName.ModTime().After(rName.ModTime()) {
-		fmt.Println(rName.Abs(), "The left is older or the right exist.")
 		return
-	} else {
-		fmt.Println(rName.Abs(), "the left is newer.")
 	}
 
 	for {
 		err := rName.Create(lName.IsDir(), lName.Mode())
 		if err == nil {
-
 			break
 		} else {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			time.Sleep(time.Second * 1)
 		}
 	}
@@ -398,7 +400,17 @@ func (p *SyncPair) handleRename(lName uri.Uri) {
 }
 
 func (p *SyncPair) ToRight(u uri.Uri) (uri.Uri, error) {
-	Uris := strings.Replace(u.Uri(), p.Left.Uri(), p.Right.Uri(), -1)
+	lTmp := p.Left.Uri()
+	rTmp := p.Right.Uri()
+	lTmplen := len(lTmp)
+	rTmplen := len(rTmp)
+	if lTmp[lTmplen-1] == '/' {
+		lTmp = lTmp[0 : lTmplen-1]
+	}
+	if rTmp[rTmplen-1] == '/' {
+		rTmp = rTmp[0 : rTmplen-1]
+	}
+	Uris := strings.Replace(u.Uri(), lTmp, rTmp, -1)
 	return uri.Parse(Uris)
 
 }
@@ -448,8 +460,10 @@ func copyFile(rFile, lFile uri.Uri) (io.ReadCloser, io.WriteCloser) {
 	rFd, err := rFile.OpenWrite()
 	for {
 		if err != nil {
+			fmt.Println(err)
 			time.Sleep(time.Second * 1)
 		} else {
+
 			break
 		}
 		rFd, err = rFile.OpenWrite()
