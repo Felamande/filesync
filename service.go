@@ -75,7 +75,7 @@ func (p *Program) Stop(s svc.Service) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(filepath.Join(p.Folder, "config.json.alt"), b, 0777)
+	err = ioutil.WriteFile(filepath.Join(p.Folder, "config.json"), b, 0777)
 	return err
 }
 
