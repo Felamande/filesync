@@ -1,6 +1,8 @@
 package log
 
 import (
+	"os"
+	"path/filepath"
 	"time"
 
 	"code.google.com/p/log4go"
@@ -105,6 +107,8 @@ type FileLogger struct {
 }
 
 func NewFileLogger(file string) *FileLogger {
+
+	os.MkdirAll(filepath.Dir(file), 0777)
 	l := log4go.NewFileLogWriter(file, true)
 	l.SetRotateDaily(true)
 	return &FileLogger{l}
