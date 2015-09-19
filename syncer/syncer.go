@@ -4,24 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/Felamande/filesync/uri"
-
 	"github.com/Felamande/filesync/log"
+	"github.com/Felamande/filesync/uri"
+	"github.com/kardianos/osext"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
 var logger log.Logger
 
 func init() {
-	fi, _ := os.Stat(".")
-	os.Mkdir(".log", fi.Mode())
-	logger = log.NewFileLogger("./.log/sync.log")
+	f, _ := osext.ExecutableFolder()
+	logger = log.NewFileLogger(filepath.Join(f, ".log/sync.log"))
 }
 
 type DirHandler func(string)
@@ -71,30 +70,10 @@ func SetLogger(logger log.Logger) {
 	logger = logger
 }
 
-func (s *Syncer) readConfig() {
-
-	configFile, err := os.Open("config.json")
-	if err != nil {
-		logger.Warn("*Syncer.readConfig", err.Error())
-		return
-	}
-
-	JsonBytes, err := ioutil.ReadAll(configFile)
-	if err != nil {
-		logger.Warn("*Syncer.readConfig", err.Error())
-		return
-	}
-
-	var config SavedConfig = SavedConfig{}
-
-	err = json.Unmarshal(JsonBytes, &config.Pairs)
-
-	if err != nil {
-		logger.Warn("*Syncer.readConfig", err.Error())
-	}
+func (s *Syncer) Run(config SavedConfig) {
 
 	if len(config.Pairs) == 0 {
-		logger.Info("&SyncPair.readConfig", "no pairs in config.json.")
+		logger.Info("*SyncPair.Run", "no pairs in config.json.")
 		return
 	}
 
@@ -116,14 +95,7 @@ func (s *Syncer) readConfig() {
 				Config: pair.Config,
 			},
 		)
-		fmt.Println(pair.Config)
 	}
-
-}
-
-func (s *Syncer) Run() {
-
-	s.readConfig()
 
 	for _, pair := range s.SyncPairs {
 
@@ -141,6 +113,51 @@ func (s *Syncer) Run() {
 		}(pair)
 
 	}
+
+}
+
+func (s *Syncer) WatchConfigChange(file string) error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	err = watcher.Add(file)
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case e := <-watcher.Events:
+			if e.Op == fsnotify.Remove || e.Op == fsnotify.Rename {
+				continue
+			}
+			go s.UpdateConfig(file)
+		}
+	}
+
+}
+
+func (s *Syncer) UpdateConfig(file string) {
+	var fd *os.File
+	var err error
+	var timeout int = 0
+	for {
+		if timeout > 100 {
+			break
+		}
+		fd, err = os.Open(file)
+		if err != nil {
+			timeout++
+		} else {
+			break
+		}
+
+	}
+
+	config := &SavedConfig{}
+
+	d := json.NewDecoder(fd)
+	d.Decode(config)
 
 }
 
@@ -200,7 +217,7 @@ func (p *SyncPair) BeginWatch() {
 	err = p.Left.Walk(
 		func(root, lDir uri.Uri) error {
 
-			err = p.watcher.Add(lDir.Abs())
+			err = p.WatchLeft(lDir)
 			if err != nil {
 				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
 				return nil
