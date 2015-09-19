@@ -2,6 +2,7 @@ package uri
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -178,21 +179,23 @@ func (u *UriLocal) Walk(dh, fh Handler) error {
 	err := filepath.Walk(u.Abs(),
 		func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
-				return err
+				fmt.Println(err)
+				return nil
 			}
 			path = strings.Replace(path, "\\", "/", -1)
 			urip, err := Parse(u.Scheme() + "://" + path)
 			if err != nil {
-				return err
+				fmt.Println(err)
+				return nil
 			}
 			if urip.IsDir() {
 				err = dh(u, urip)
 			} else {
 				err = fh(u, urip)
 			}
-
 			if err != nil {
-				return err
+				fmt.Println(err)
+				return nil
 			}
 			return nil
 		},
