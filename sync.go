@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/Felamande/filesync/log"
+	"github.com/go-martini/martini"
+	"github.com/kardianos/osext"
 	svc "github.com/kardianos/service"
 
 	"github.com/Felamande/filesync/syncer"
@@ -34,7 +38,31 @@ func main() {
 		return
 	}
 
-	p := &Program{}
+	folder, err := osext.ExecutableFolder()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	config, err := ReadConfig(filepath.Join(folder, "config.json"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(config)
+
+	p := &Program{
+		Config: config,
+		Syncer: syncer.New(),
+		Server: martini.Classic(),
+		Logger: log.NewFileLogger(filepath.Join(folder, "./.log/service.log")),
+		Folder: folder,
+	}
+
+	if p.Syncer == nil {
+		fmt.Println("p.Syncer is nill")
+		return
+	}
 	s, err := svc.New(p, &svc.Config{
 		Name:        "Filesync",
 		DisplayName: "FileSync Service",
@@ -49,7 +77,7 @@ func main() {
 
 	if *run {
 		err := s.Run()
-		fmt.Println("-run with error: ", err.Error())
+		fmt.Println("-run with error: ", err)
 		return
 	}
 

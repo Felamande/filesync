@@ -2,14 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/Felamande/filesync/log"
-	"github.com/kardianos/osext"
 )
 import (
 	"github.com/Felamande/filesync/syncer"
@@ -31,26 +29,7 @@ func (p *Program) Start(s svc.Service) error {
 }
 
 func (p *Program) run() {
-	folder, err := osext.ExecutableFolder()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 
-	config, err := ReadConfig(filepath.Join(folder, "config.json"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(config)
-
-	p = &Program{
-		Config: config,
-		Syncer: syncer.New(),
-		Server: martini.Classic(),
-		Logger: log.NewFileLogger(filepath.Join(folder, "./.log/service.log")),
-		Folder: folder,
-	}
 	p.Server.Map(p.Syncer)
 	p.Server.Map(p.Logger)
 	p.Server.Post("/new", NewPair)
@@ -60,7 +39,10 @@ func (p *Program) run() {
 }
 
 func (p *Program) Stop(s svc.Service) error {
-	c := syncer.SavedConfig{}
+	c := syncer.SavedConfig{
+		Pairs: []syncer.SyncPairConfig{},
+	}
+
 	for _, pair := range p.Syncer.SyncPairs {
 
 		c.Pairs = append(c.Pairs, syncer.SyncPairConfig{
