@@ -1,27 +1,20 @@
 pairs:
-- left: local://C:/users/KiriGiri/pictures
-  right: local://D:/pictures
+- left: local:///home/linuxuser/pictures #uri format: protocol://absolute_path
+  right: local:///mnt/part/pictures
   config:
     coversamename: false
     syncdelete: true
     syncrename: true
-- left: local://D:/pictures
-  right: local://E:/pictures
+- left: local://D:/windowsdir/pictures
+  right: local://E:/windowsdir/pictures
   config:
     coversamename: false
     syncdelete: true
     syncrename: true
-- left: local://D:/music
-  right: local://E:/music
+- left: local://D:/windowsdir/pictures
+  right: ftp://domain.com/ftpdir/pictures #ftp not yet supported
   config:
     coversamename: false
     syncdelete: true
     syncrename: true
-- left: local://D:/Books
-  right: local://E:/资料/Books
-  config:
-    coversamename: false
-    syncdelete: true
-    syncrename: true
-
 port: "30120"
