@@ -1,0 +1,27 @@
+pairs:
+- left: local://C:/users/KiriGiri/pictures
+  right: local://D:/pictures
+  config:
+    coversamename: false
+    syncdelete: true
+    syncrename: true
+- left: local://D:/pictures
+  right: local://E:/pictures
+  config:
+    coversamename: false
+    syncdelete: true
+    syncrename: true
+- left: local://D:/music
+  right: local://E:/music
+  config:
+    coversamename: false
+    syncdelete: true
+    syncrename: true
+- left: local://D:/Books
+  right: local://E:/资料/Books
+  config:
+    coversamename: false
+    syncdelete: true
+    syncrename: true
+
+port: "30120"

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
+
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/Felamande/filesync/log"
 )
@@ -35,7 +36,14 @@ func (p *Program) run() {
 	p.Server.Post("/new", NewPair)
 	p.Server.Get("/new", HelloNewPair)
 	go p.Syncer.Run(*p.Config)
-	http.ListenAndServe(p.Config.Port, p.Server)
+	//	go func() {
+	//		fmt.Println("watching config change")
+	//		err := p.Syncer.WatchConfigChange(filepath.Join(p.Folder, "config.yaml"))
+	//		if err != nil {
+	//			fmt.Println(err)
+	//		}
+	//	}()
+	http.ListenAndServe(":"+p.Config.Port, p.Server)
 }
 
 func (p *Program) Stop(s svc.Service) error {
@@ -52,12 +60,12 @@ func (p *Program) Stop(s svc.Service) error {
 		})
 	}
 	c.Port = p.Config.Port
-	b, err := json.Marshal(&c)
+	b, err := yaml.Marshal(&c)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(filepath.Join(p.Folder, "config.json"), b, 0777)
+	err = ioutil.WriteFile(filepath.Join(p.Folder, "config.yaml"), b, 0777)
 	return err
 }
 
@@ -65,28 +73,24 @@ func ReadConfig(ConfigFile string) (*syncer.SavedConfig, error) {
 
 	var config *syncer.SavedConfig = &syncer.SavedConfig{
 		Pairs: []syncer.SyncPairConfig{},
-		Port:  ":20000",
+		Port:  "20000",
 	}
 
-	configFile, err := os.Open(ConfigFile)
+	data, err := ioutil.ReadFile(ConfigFile)
 	if err != nil {
 		return nil, err
 	}
-	defer configFile.Close()
 
-	d := json.NewDecoder(configFile)
-	err = d.Decode(config)
-
+	err = yaml.Unmarshal(data, config)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(config.Port) == 0 {
-		config.Port = ":20000"
+		config.Port = "20000"
+		fmt.Println("Listen on the default port: 2000")
 	}
-	if config.Port[0] != ':' {
-		config.Port = ":" + config.Port
-	}
+	fmt.Println("Listen on port: " + config.Port)
 
 	return config, nil
 

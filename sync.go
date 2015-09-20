@@ -44,7 +44,7 @@ func main() {
 		return
 	}
 
-	config, err := ReadConfig(filepath.Join(folder, "config.json"))
+	config, err := ReadConfig(filepath.Join(folder, "config.yaml"))
 	if err != nil {
 		fmt.Println(err)
 		return

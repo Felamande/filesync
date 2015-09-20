@@ -1,9 +1,9 @@
 package syncer
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +14,7 @@ import (
 	"github.com/Felamande/filesync/uri"
 	"github.com/kardianos/osext"
 	fsnotify "gopkg.in/fsnotify.v1"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var logger log.Logger
@@ -47,11 +48,13 @@ type SyncMsg struct {
 
 type Syncer struct {
 	SyncPairs []*SyncPair
+	PairMap   map[string]string
 }
 
 func New() *Syncer {
 	return &Syncer{
 		SyncPairs: []*SyncPair{},
+		PairMap:   make(map[string]string, 4),
 	}
 }
 
@@ -107,7 +110,8 @@ func (s *Syncer) Run(config SavedConfig) {
 			logger.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}.Error())
 			continue
 		}
-		fmt.Println("range: ", pair.Left.Uri())
+
+		s.PairMap[pair.Left.Uri()] = pair.Right.Uri()
 
 		go func(p *SyncPair) {
 			p.BeginWatch()
@@ -118,6 +122,7 @@ func (s *Syncer) Run(config SavedConfig) {
 }
 
 func (s *Syncer) WatchConfigChange(file string) error {
+	fmt.Println("Im here.")
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -126,27 +131,31 @@ func (s *Syncer) WatchConfigChange(file string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("start watching config file: " + file)
 	for {
 		select {
 		case e := <-watcher.Events:
+			fmt.Println(e.Op, e.Name)
 			if e.Op == fsnotify.Remove || e.Op == fsnotify.Rename {
 				continue
 			}
-			go s.UpdateConfig(file)
+			go s.updateConfig(file)
+		case e := <-watcher.Errors:
+			fmt.Println(e.Error())
 		}
 	}
 
 }
 
-func (s *Syncer) UpdateConfig(file string) {
-	var fd *os.File
+func (s *Syncer) updateConfig(file string) {
+	var data []byte = make([]byte, 4096)
 	var err error
 	var timeout int = 0
 	for {
 		if timeout > 100 {
-			break
+			return
 		}
-		fd, err = os.Open(file)
+		data, err = ioutil.ReadFile(file)
 		if err != nil {
 			timeout++
 		} else {
@@ -155,11 +164,40 @@ func (s *Syncer) UpdateConfig(file string) {
 
 	}
 
-	config := &SavedConfig{}
+	var config *SavedConfig = &SavedConfig{
+		Pairs: []SyncPairConfig{},
+	}
 
-	d := json.NewDecoder(fd)
-	d.Decode(config)
+	err = yaml.Unmarshal(data, config)
+	if err != nil {
+		fmt.Println("unmarshal failed: ", err.Error())
+		logger.Info("*Syncer.updateConfig@Unmarshall", err.Error())
+		return
+	}
 
+	for _, p := range config.Pairs {
+		right, exist := s.PairMap[p.Left]
+		if !exist {
+			err = s.NewPair(p.Config, p.Left, p.Right)
+			if err != nil {
+				logger.Error("*Syncer.updateConfig", err.Error())
+				continue
+			}
+			fmt.Println("update: ", p.Config, p.Left, p.Right)
+			logger.Info("*Syncer.updateConfig", "config updated.")
+		} else {
+			if right == p.Right {
+				continue
+			}
+
+			err = s.NewPair(p.Config, p.Left, p.Right)
+			if err != nil {
+				logger.Error("*Syncer.updateConfig", err.Error())
+			}
+			fmt.Println("update: ", p.Config, p.Left, p.Right)
+			logger.Info("*Syncer.updateConfig", "config updated.")
+		}
+	}
 }
 
 func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
@@ -197,6 +235,7 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 	}
 
 	s.SyncPairs = append(s.SyncPairs, pair)
+	s.PairMap[pair.Left.Uri()] = pair.Right.Uri()
 
 	go func(p *SyncPair) {
 		p.BeginWatch()
@@ -339,7 +378,6 @@ func (p *SyncPair) handleCreate(lName uri.Uri) {
 		if err == nil {
 			break
 		} else {
-			fmt.Println(err)
 			time.Sleep(time.Second * 1)
 		}
 	}
@@ -419,7 +457,6 @@ func (p *SyncPair) WatchLeft(left uri.Uri) error {
 	for {
 		err := p.watcher.Add(left.Abs())
 		if err != nil {
-			fmt.Println("file occupied: " + err.Error())
 			err = p.watcher.Add(left.Abs())
 		} else {
 			break
@@ -460,7 +497,6 @@ func copyFile(rFile, lFile uri.Uri) (io.ReadCloser, io.WriteCloser) {
 	rFd, err := rFile.OpenWrite()
 	for {
 		if err != nil {
-			fmt.Println(err)
 			time.Sleep(time.Second * 1)
 		} else {
 
