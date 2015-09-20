@@ -12,7 +12,6 @@ import (
 	"github.com/go-martini/martini"
 	"github.com/kardianos/osext"
 	svc "github.com/kardianos/service"
-
 	"github.com/Felamande/filesync/syncer"
 )
 
