@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"testing"
-
 	"github.com/Felamande/filesync/uri"
 )
 

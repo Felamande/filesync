@@ -7,12 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/Felamande/filesync/log"
+	"github.com/Felamande/filesync/syncer"
 	"github.com/go-martini/martini"
 	"github.com/kardianos/osext"
 	svc "github.com/kardianos/service"
-	"github.com/Felamande/filesync/syncer"
+	"github.com/qiniu/log"
 )
 
 var run *bool = flag.Bool("run", false, "Run in the shell. -svcctl will be disabled.")
@@ -50,16 +51,26 @@ func main() {
 	}
 	fmt.Println(config)
 
+	if !filepath.IsAbs(config.LogPath) {
+		config.LogPath = filepath.Join(folder, config.LogPath)
+	}
+
+	LogFile, err := os.OpenFile(filepath.Join(config.LogPath, time.Now().Format("060102.log")), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	p := &Program{
 		Config: config,
 		Syncer: syncer.New(),
 		Server: martini.Classic(),
-		Logger: log.NewFileLogger(filepath.Join(folder, "./.log/service.log")),
+		Logger: log.New(LogFile, "[filesync]", log.Ldefault|log.Lmicroseconds),
 		Folder: folder,
 	}
 
 	if p.Syncer == nil {
-		fmt.Println("p.Syncer is nill")
+		fmt.Println("p.Syncer is nil")
 		return
 	}
 	s, err := svc.New(p, &svc.Config{
@@ -76,7 +87,7 @@ func main() {
 
 	if *run {
 		err := s.Run()
-		fmt.Println("-run with error: ", err)
+		fmt.Println("run with error: ", err)
 		return
 	}
 
@@ -92,7 +103,7 @@ func HelloNewPair() string {
 	return "<!DOCTYPE html><head><script type='text/javascript' src='http://libs.baidu.com/jquery/2.0.3/jquery.min.js'></script></head><body>Hello</body>"
 }
 
-func NewPair(s *syncer.Syncer, r *http.Request) string {
+func NewPair(s *syncer.Syncer, r *http.Request, l *log.Logger) string {
 	err := r.ParseForm()
 	if err != nil {
 		return err.Error()
@@ -104,6 +115,11 @@ func NewPair(s *syncer.Syncer, r *http.Request) string {
 	if err != nil {
 		return err.Error()
 	}
+
 	return lName + " ==> " + rName
+
+}
+
+func ServeLog() {
 
 }

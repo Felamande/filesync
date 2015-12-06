@@ -1,14 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
+	//"path/filepath"
+	"strconv"
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/Felamande/filesync/log"
+	"github.com/qiniu/log"
 )
 import (
 	"github.com/Felamande/filesync/syncer"
@@ -19,23 +21,26 @@ import (
 type Program struct {
 	Syncer *syncer.Syncer
 	Server *martini.ClassicMartini
-	Logger *log.FileLogger
+	Logger *log.Logger
 	Config *syncer.SavedConfig
 	Folder string
 }
 
+//Start program
 func (p *Program) Start(s svc.Service) error {
 	go p.run()
 	return nil
 }
 
 func (p *Program) run() {
-
+	p.Logger.Info("start service.")
 	p.Server.Map(p.Syncer)
 	p.Server.Map(p.Logger)
 	p.Server.Post("/new", NewPair)
 	p.Server.Get("/new", HelloNewPair)
+	syncer.SetLogger(p.Logger)
 	go p.Syncer.Run(*p.Config)
+
 	//	go func() {
 	//		fmt.Println("watching config change")
 	//		err := p.Syncer.WatchConfigChange(filepath.Join(p.Folder, "config.yaml"))
@@ -43,39 +48,43 @@ func (p *Program) run() {
 	//			fmt.Println(err)
 	//		}
 	//	}()
-	http.ListenAndServe(":"+p.Config.Port, p.Server)
+	http.ListenAndServe(":"+strconv.Itoa(p.Config.Port), p.Server)
 }
 
+//Stop Stop the program.
 func (p *Program) Stop(s svc.Service) error {
-	c := syncer.SavedConfig{
-		Pairs: []syncer.SyncPairConfig{},
-	}
 
-	for _, pair := range p.Syncer.SyncPairs {
+	// c := syncer.SavedConfig{
+	// 	Pairs: []syncer.SyncPairConfig{},
+	// }
+	// c.LogPath = p.Config.LogPath
 
-		c.Pairs = append(c.Pairs, syncer.SyncPairConfig{
-			Left:   pair.Left.Uri(),
-			Right:  pair.Right.Uri(),
-			Config: pair.Config,
-		})
-	}
-	c.Port = p.Config.Port
-	b, err := yaml.Marshal(&c)
-	if err != nil {
-		return err
-	}
+	// for _, pair := range p.Syncer.SyncPairs {
 
-	err = ioutil.WriteFile(filepath.Join(p.Folder, "config.yaml"), b, 0777)
-	return err
+	// 	c.Pairs = append(c.Pairs, syncer.SyncPairConfig{
+	// 		Left:   pair.Left.Uri(),
+	// 		Right:  pair.Right.Uri(),
+	// 		Config: pair.Config,
+	// 	})
+	// }
+	// c.Port = p.Config.Port
+	// b, err := yaml.Marshal(&c)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// err = ioutil.WriteFile(filepath.Join(p.Folder, "config.yaml"), b, 0777)
+	p.Logger.Info("service stopped.")
+	return nil
 }
 
+//ReadConfig config.yaml
 func ReadConfig(ConfigFile string) (*syncer.SavedConfig, error) {
 
-	var config *syncer.SavedConfig = &syncer.SavedConfig{
+	config := &syncer.SavedConfig{
 		Pairs: []syncer.SyncPairConfig{},
-		Port:  "20000",
+		Port:  20000,
 	}
-
 	data, err := ioutil.ReadFile(ConfigFile)
 	if err != nil {
 		return nil, err
@@ -86,11 +95,11 @@ func ReadConfig(ConfigFile string) (*syncer.SavedConfig, error) {
 		return nil, err
 	}
 
-	if len(config.Port) == 0 {
-		config.Port = "20000"
-		fmt.Println("Listen on the default port: 2000")
+	if len(config.LogPath) == 0 {
+		return nil, errors.New("Need a log path in config.yaml")
 	}
-	fmt.Println("Listen on port: " + config.Port)
+
+	fmt.Println("Listen on port: ", config.Port)
 
 	return config, nil
 

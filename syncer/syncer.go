@@ -3,26 +3,15 @@ package syncer
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/Felamande/filesync/log"
 	"github.com/Felamande/filesync/uri"
-	"github.com/kardianos/osext"
+	"github.com/qiniu/log"
 	fsnotify "gopkg.in/fsnotify.v1"
-	yaml "gopkg.in/yaml.v2"
 )
 
-var logger log.Logger
-
-func init() {
-	f, _ := osext.ExecutableFolder()
-	logger = log.NewFileLogger(filepath.Join(f, ".log/sync.log"))
-}
+var logger *log.Logger
 
 type DirHandler func(string)
 type FileHandler func(string)
@@ -54,26 +43,19 @@ type Syncer struct {
 func New() *Syncer {
 	return &Syncer{
 		SyncPairs: []*SyncPair{},
-		PairMap:   make(map[string]string, 4),
+		PairMap:   make(map[string]string, 32),
 	}
 }
 
-// @param1 interface log.Logger
-// package github.com/Felamande/filesync/log
-// type Logger interface {
-//	Info(source, messsage string)
-//	Debug(source, messsage string)
-//	Warn(source, messsage string)
-//	Error(source, messsage string)
-//	Critical(source, messsage string)
-//	Panic(source, messsage string)
-//	Close() error
-//}
-func SetLogger(logger log.Logger) {
-	logger = logger
+func SetLogger(l *log.Logger) {
+	logger = l
 }
 
 func (s *Syncer) Run(config SavedConfig) {
+
+	if logger == nil {
+		panic("logger is nil")
+	}
 
 	if len(config.Pairs) == 0 {
 		logger.Info("*SyncPair.Run", "no pairs in config.json.")
@@ -81,163 +63,49 @@ func (s *Syncer) Run(config SavedConfig) {
 	}
 
 	for _, pair := range config.Pairs {
-		LeftUri, err := uri.Parse(pair.Left)
+		err := s.NewPair(pair.Config, pair.Left, pair.Right)
 		if err != nil {
-			logger.Error("*SyncPair.readConfig", err.Error())
-			return
-		}
-		RightUri, err := uri.Parse(pair.Right)
-		if err != nil {
-			logger.Error("*SyncPair.readConfig", err.Error())
-			return
-		}
-		s.SyncPairs = append(s.SyncPairs,
-			&SyncPair{
-				Left:   LeftUri,
-				Right:  RightUri,
-				Config: pair.Config,
-			},
-		)
-	}
-
-	for _, pair := range s.SyncPairs {
-
-		if !pair.Left.IsAbs() || !pair.Left.IsAbs() {
-			logger.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}.Error())
+			logger.Error(err.Error())
 			continue
-		}
-		if !pair.Left.Exist() || !pair.Left.Exist() {
-			logger.Warn("*Syncer.Run", PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}.Error())
-			continue
-		}
-
-		s.PairMap[pair.Left.Uri()] = pair.Right.Uri()
-
-		go func(p *SyncPair) {
-			p.BeginWatch()
-		}(pair)
-
-	}
-
-}
-
-func (s *Syncer) WatchConfigChange(file string) error {
-	fmt.Println("Im here.")
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	err = watcher.Add(file)
-	if err != nil {
-		return err
-	}
-	fmt.Println("start watching config file: " + file)
-	for {
-		select {
-		case e := <-watcher.Events:
-			fmt.Println(e.Op, e.Name)
-			if e.Op == fsnotify.Remove || e.Op == fsnotify.Rename {
-				continue
-			}
-			go s.updateConfig(file)
-		case e := <-watcher.Errors:
-			fmt.Println(e.Error())
-		}
-	}
-
-}
-
-func (s *Syncer) updateConfig(file string) {
-	var data []byte = make([]byte, 4096)
-	var err error
-	var timeout int = 0
-	for {
-		if timeout > 100 {
-			return
-		}
-		data, err = ioutil.ReadFile(file)
-		if err != nil {
-			timeout++
-		} else {
-			break
-		}
-
-	}
-
-	var config *SavedConfig = &SavedConfig{
-		Pairs: []SyncPairConfig{},
-	}
-
-	err = yaml.Unmarshal(data, config)
-	if err != nil {
-		fmt.Println("unmarshal failed: ", err.Error())
-		logger.Info("*Syncer.updateConfig@Unmarshall", err.Error())
-		return
-	}
-
-	for _, p := range config.Pairs {
-		right, exist := s.PairMap[p.Left]
-		if !exist {
-			err = s.NewPair(p.Config, p.Left, p.Right)
-			if err != nil {
-				logger.Error("*Syncer.updateConfig", err.Error())
-				continue
-			}
-			fmt.Println("update: ", p.Config, p.Left, p.Right)
-			logger.Info("*Syncer.updateConfig", "config updated.")
-		} else {
-			if right == p.Right {
-				continue
-			}
-
-			err = s.NewPair(p.Config, p.Left, p.Right)
-			if err != nil {
-				logger.Error("*Syncer.updateConfig", err.Error())
-			}
-			fmt.Println("update: ", p.Config, p.Left, p.Right)
-			logger.Info("*Syncer.updateConfig", "config updated.")
 		}
 	}
 }
 
 func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 
-	lUri, err := uri.Parse(source)
+	lURI, err := uri.Parse(source)
 	if err != nil {
-		logger.Error("*Syncer.NewPair", "Parse source: "+err.Error())
 		return err
 	}
-	rUri, err := uri.Parse(target)
+	rURI, err := uri.Parse(target)
 	if err != nil {
-		logger.Error("*Syncer.NewPair", "Parse target: "+err.Error())
 		return err
 	}
 
 	pair := &SyncPair{
-		Left:  lUri,
-		Right: rUri,
+		Left:   lURI,
+		Right:  rURI,
+		Config: config,
 	}
 	pair.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		logger.Error("*SyncPair.NewPair", err.Error())
 		return err
 	}
 
-	if !pair.Left.IsAbs() || !pair.Left.IsAbs() {
+	if !pair.Left.IsAbs() || !pair.Right.IsAbs() {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}
-		logger.Warn("*Syncer.Run", err.Error())
 		return err
 	}
-	if !pair.Left.Exist() || !pair.Left.Exist() {
+	if !pair.Left.Exist() || !pair.Right.Exist() {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}
-		logger.Warn("*Syncer.Run", err.Error())
 		return err
-	}
+	} 
 
 	s.SyncPairs = append(s.SyncPairs, pair)
 	s.PairMap[pair.Left.Uri()] = pair.Right.Uri()
 
 	go func(p *SyncPair) {
+		fmt.Println("begin watching:", p.Left.Abs())
 		p.BeginWatch()
 	}(pair)
 
@@ -250,7 +118,7 @@ func (p *SyncPair) BeginWatch() {
 	p.watcher, err = fsnotify.NewWatcher()
 	p.tokens = make(chan bool, runtime.NumCPU())
 	if err != nil {
-		logger.Error("*SyncPair.BeginWatch", err.Error())
+		logger.Error(err.Error())
 		return
 	}
 
@@ -264,7 +132,7 @@ func (p *SyncPair) BeginWatch() {
 				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
 				return nil
 			}
-			logger.Info("*SyncPair.BeginWatch@walkDir", "Add to watcher: "+lDir.Abs())
+			logger.Info("Add to watcher: " + lDir.Abs())
 			p.handleCreate(lDir)
 			return nil
 
@@ -278,11 +146,11 @@ func (p *SyncPair) BeginWatch() {
 
 	if err != nil {
 		fmt.Println("walk: ", err)
-		logger.Info("*SyncPair.BeginWatch", err.Error())
+		logger.Info(err.Error())
 		return
 	}
 
-	logger.Info("*SyncPair.BeginWatch", "Add pair : "+p.Left.Uri()+" ==> "+p.Right.Uri())
+	logger.Info("Add pair : " + p.Left.Uri() + " ==> " + p.Right.Uri())
 	fmt.Println("end Walking: " + p.Left.Uri())
 	p.loopMsg()
 }
@@ -296,12 +164,12 @@ func (p *SyncPair) loopMsg() {
 			UriString := p.formatLeftUriString(e.Name)
 			u, err := uri.Parse(UriString)
 			if err != nil {
-				logger.Error("*SyncPair.loopMsg@events", err.Error())
+				logger.Error(err.Error())
 				continue
 			}
 			go p.handle(SyncMsg{e.Op, u})
 		case e := <-p.watcher.Errors:
-			logger.Info("*SyncPair.looMsg@errors", e.Error())
+			logger.Info(e.Error())
 
 		}
 
@@ -317,10 +185,10 @@ func (p *SyncPair) handle(msg SyncMsg) {
 		if msg.Left.IsDir() {
 			err := p.WatchLeft(msg.Left)
 			if err != nil {
-				logger.Error("*SyncPair.handle@watcher.Add", err.Error())
+				logger.Error(err.Error())
 				return
 			}
-			logger.Info("*SyncPair.handle@switch", "Add to Watcher: "+msg.Left.Abs())
+			logger.Info("Add to Watcher: " + msg.Left.Abs())
 		}
 
 		p.handleCreate(msg.Left)
@@ -348,7 +216,7 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 
 	rFile, err := p.ToRight(lFile)
 	if err != nil {
-		logger.Error("*SyncPair.handleWrite@ToRight", err.Error())
+		logger.Error(err.Error())
 		return
 	}
 
@@ -359,13 +227,13 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 	defer rFd.Close()
 
 	fmt.Println("finish copying:", lFile.Abs(), "==>", rFile.Abs())
-	logger.Info("*SyncPair.handleFile@io.Copy", "Sync file succesfully: "+lFile.Abs()+" ==> "+rFile.Abs())
+	logger.Info("Sync file succesfully: " + lFile.Abs() + " ==> " + rFile.Abs())
 }
 
 func (p *SyncPair) handleCreate(lName uri.Uri) {
 	rName, err := p.ToRight(lName)
 	if err != nil {
-		logger.Error("*SyncPair.handleCreate@ToRight", err.Error())
+		logger.Error(err.Error())
 		return
 	}
 
@@ -391,7 +259,7 @@ func (p *SyncPair) handleCreate(lName uri.Uri) {
 	defer lFd.Close()
 	defer rFd.Close()
 
-	logger.Info("*SyncPair.handleCreate@io.Copy", "Sync  succesfully: "+lName.Abs()+" ==> "+rName.Abs())
+	logger.Info("Sync  succesfully: " + lName.Abs() + " ==> " + rName.Abs())
 
 }
 
@@ -404,7 +272,7 @@ func (p *SyncPair) handleRemove(lName uri.Uri) {
 	fmt.Println(lName.Abs(), "removed")
 	rName, err := p.ToRight(lName)
 	if err != nil {
-		logger.Error("*SyncPair.handleRemove", err.Error())
+		logger.Error(err.Error())
 		return
 	}
 
@@ -425,10 +293,10 @@ func (p *SyncPair) handleRemove(lName uri.Uri) {
 
 	err = p.watcher.Remove(lName.Abs())
 	if err != nil {
-		logger.Warn("*syncPair.handleRemove", err.Error())
+		logger.Warn(err.Error())
 	}
 
-	logger.Info("*SyncPair.handleRemove", "Remove successfully: "+rName.Abs())
+	logger.Info("Remove successfully: " + rName.Abs())
 	return
 
 }
@@ -476,13 +344,9 @@ func (e PairNotValidError) Error() string {
 	return e.Message + ": " + e.Left + " ==> " + e.Right
 }
 
-func exist(file string) bool {
-	_, err := os.Stat(file)
-	return !os.IsNotExist(err)
-}
-
 func copyFile(rFile, lFile uri.Uri) (io.ReadCloser, io.WriteCloser) {
 	var err error
+
 	lFd, err := lFile.OpenRead()
 	for {
 		if err != nil {
@@ -505,6 +369,85 @@ func copyFile(rFile, lFile uri.Uri) (io.ReadCloser, io.WriteCloser) {
 		rFd, err = rFile.OpenWrite()
 
 	}
+
 	io.Copy(rFd, lFd)
 	return lFd, rFd
 }
+
+// func (s *Syncer) WatchConfigChange(file string) error {
+// 	watcher, err := fsnotify.NewWatcher()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = watcher.Add(file)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	fmt.Println("start watching config file: " + file)
+// 	for {
+// 		select {
+// 		case e := <-watcher.Events:
+// 			fmt.Println(e.Op, e.Name)
+// 			if e.Op == fsnotify.Remove || e.Op == fsnotify.Rename {
+// 				continue
+// 			}
+// 			go s.updateConfig(file)
+// 		case e := <-watcher.Errors:
+// 			logger.Error(e.Error())
+// 		}
+// 	}
+
+// }
+
+// func (s *Syncer) updateConfig(file string) {
+// 	data := make([]byte, 4096)
+// 	var err error
+// 	timeout := 0
+// 	for {
+// 		if timeout > 100 {
+// 			return
+// 		}
+// 		data, err = ioutil.ReadFile(file)
+// 		if err != nil {
+// 			timeout++
+// 		} else {
+// 			break
+// 		}
+
+// 	}
+
+// 	config := &SavedConfig{
+// 		Pairs: []SyncPairConfig{},
+// 	}
+
+// 	err = yaml.Unmarshal(data, config)
+// 	if err != nil {
+// 		fmt.Println("unmarshal failed: ", err.Error())
+// 		logger.Info(err.Error())
+// 		return
+// 	}
+
+// 	for _, p := range config.Pairs {
+// 		right, exist := s.PairMap[p.Left]
+// 		if !exist {
+// 			err = s.NewPair(p.Config, p.Left, p.Right)
+// 			if err != nil {
+// 				logger.Error(err.Error())
+// 				continue
+// 			}
+// 			fmt.Println("update: ", p.Config, p.Left, p.Right)
+// 			logger.Info("config updated.")
+// 		} else {
+// 			if right == p.Right {
+// 				continue
+// 			}
+
+// 			err = s.NewPair(p.Config, p.Left, p.Right)
+// 			if err != nil {
+// 				logger.Error(err.Error())
+// 			}
+// 			fmt.Println("update: ", p.Config, p.Left, p.Right)
+// 			logger.Info("config updated.")
+// 		}
+// 	}
+// }

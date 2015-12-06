@@ -172,6 +172,7 @@ func (u *UriLocal) Remove() error {
 }
 
 func (u *UriLocal) Walk(dh, fh Handler) error {
+
 	if !u.IsDir() {
 		return errors.New("walk " + u.Abs() + ": is not a directory")
 	}

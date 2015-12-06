@@ -23,7 +23,6 @@ run ```filesync -help``` to get help.
 
 ## TODO
 * Support different protocols. By now, it can only sync file locally.
-* An easy-to-use dashboard.
 
 ## Known issues
 * On windows, some program cannot save files that are occupied by the filesync program.
@@ -33,7 +32,7 @@ run ```filesync -help``` to get help.
 ## Thanks
 * [martini](https://github.com/go-martini/martini)
 * [fsnotify](https://gopkg.in/fsnotify.v1)
-* [log4go](https://code.google.com/p/log4go)
+* [qiniu/log](https://github.com/qiniu/log)
 * [service](https://github.com/kardianos/service)
 
 

@@ -109,7 +109,11 @@ type FileLogger struct {
 func NewFileLogger(file string) *FileLogger {
 
 	os.MkdirAll(filepath.Dir(file), 0777)
+
 	l := log4go.NewFileLogWriter(file, true)
+	if l == nil {
+		return nil
+	}
 	l.SetRotateDaily(true)
 	return &FileLogger{l}
 }
