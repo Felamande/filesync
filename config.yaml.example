@@ -17,4 +17,5 @@ pairs:
     coversamename: false
     syncdelete: true
     syncrename: true
-port: "30120"
+port: 30120
+logpath: ./.log
