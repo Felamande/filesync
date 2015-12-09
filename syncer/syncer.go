@@ -96,8 +96,8 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}
 		return err
 	}
-	if !pair.Left.Exist() || !pair.Right.Exist() {
-		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of pair Uris not exist"}
+	if !pair.Left.Exist()  {
+		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of left Uri not exist"}
 		return err
 	} 
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	//"path/filepath"
 	"strconv"
 
 	yaml "gopkg.in/yaml.v2"

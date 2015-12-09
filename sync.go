@@ -19,7 +19,7 @@ import (
 var run *bool = flag.Bool("run", false, "Run in the shell. -svcctl will be disabled.")
 var controls *string = flag.String("svcctl", "install,start", "value:[start,stop,restart,install,uninstall], can be multiple values separated by commas")
 var help *bool = flag.Bool("help", false, "Get help")
-
+var console *bool = flag.Bool("console",false,"Print logs to the console instead of the log files.")
 func main() {
 	flag.Parse()
 
@@ -86,6 +86,11 @@ func main() {
 	}
 
 	if *run {
+		if *console{
+			p.Logger = log.New(os.Stdout, "[filesync]", log.Ldefault|log.Lmicroseconds)
+			p.run()
+			return
+		}
 		err := s.Run()
 		fmt.Println("run with error: ", err)
 		return
