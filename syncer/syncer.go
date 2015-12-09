@@ -16,6 +16,9 @@ var logger *log.Logger
 type DirHandler func(string)
 type FileHandler func(string)
 
+
+
+
 type SyncConfig struct {
 	CoverSameName bool `json:"cover_same_name"`
 	SyncDelete    bool `json:"sync_delete"`

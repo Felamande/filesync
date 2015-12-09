@@ -18,3 +18,4 @@ func (u *UriFtp) Scheme() string {
 func (u *UriFtp) Host() string {
 	return ""
 }
+
