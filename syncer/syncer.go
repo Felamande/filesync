@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 	"github.com/Felamande/filesync/uri"
-	"github.com/qiniu/log"
+	"github.com/Felamande/filesync/log"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
@@ -52,7 +52,6 @@ func SetLogger(l *log.Logger) {
 }
 
 func (s *Syncer) Run(config SavedConfig) {
-
 	if logger == nil {
 		panic("logger is nil")
 	}

@@ -9,7 +9,7 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/qiniu/log"
+	"github.com/Felamande/filesync/log"
 )
 import (
 	"github.com/Felamande/filesync/syncer"

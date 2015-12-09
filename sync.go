@@ -13,7 +13,7 @@ import (
 	"github.com/go-martini/martini"
 	"github.com/kardianos/osext"
 	svc "github.com/kardianos/service"
-	"github.com/qiniu/log"
+	"github.com/Felamande/filesync/log"
 )
 
 var run *bool = flag.Bool("run", false, "Run in the shell. -svcctl will be disabled.")
