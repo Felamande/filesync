@@ -1,10 +1,12 @@
 package main
 
 import (
+	// "bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	//"path/filepath"
 	"strconv"
 
 	yaml "gopkg.in/yaml.v2"
@@ -69,11 +71,20 @@ func (p *Program) Stop(s svc.Service) error {
 	// c.Port = p.Config.Port
 	// b, err := yaml.Marshal(&c)
 	// if err != nil {
+	// 	p.Logger.Warn(err.Error())
 	// 	return err
 	// }
-
+	// rb, err := ioutil.ReadFile(filepath.Join(p.Folder, "config.yaml"))
+	// if err != nil {
+	// 	p.Logger.Warn(err.Error())
+	// 	return err
+	// }
+	// if bytes.Equal(b, rb) {
+	// 	p.Logger.Info("service stopped, config not been changed.")
+	// 	return nil
+	// }
 	// err = ioutil.WriteFile(filepath.Join(p.Folder, "config.yaml"), b, 0777)
-	p.Logger.Info("service stopped.")
+	p.Logger.Info("service stopped, config saved.")
 	return nil
 }
 
