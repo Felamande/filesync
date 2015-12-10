@@ -16,10 +16,10 @@ import (
 	"github.com/Felamande/filesync/log"
 )
 
-var run *bool = flag.Bool("run", false, "Run in the shell. -svcctl will be disabled.")
-var controls *string = flag.String("svcctl", "install,start", "value:[start,stop,restart,install,uninstall], can be multiple values separated by commas")
-var help *bool = flag.Bool("help", false, "Get help")
-var console *bool = flag.Bool("console",false,"Print logs to the console instead of the log files.")
+var run = flag.Bool("run", false, "Run in the shell. -svcctl will be disabled.")
+var controls = flag.String("svcctl", "install,start", "value:[start,stop,restart,install,uninstall], can be multiple values separated by commas")
+var help = flag.Bool("help", false, "Get help")
+var console = flag.Bool("console",false,"Print logs to the console instead of the log files.")
 func main() {
 	flag.Parse()
 
@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 
-	if flag.Lookup("run") == nil && flag.Lookup("svcctl") == nil && flag.Lookup("help") == nil {
+	if flag.Lookup("run") == nil && flag.Lookup("svcctl") == nil && flag.Lookup("help") == nil && flag.Lookup("console") == nil{
 		flag.Usage()
 		return
 	}
