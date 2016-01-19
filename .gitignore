@@ -1,0 +1,11 @@
+*.bat
+*.log
+*.zip
+*.7z
+*.gz
+*.yaml
+*.exe
+*.json
+*.txt
+*.ps1
+

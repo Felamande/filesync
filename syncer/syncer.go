@@ -3,11 +3,13 @@ package syncer
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
-	"github.com/Felamande/filesync/uri"
+
 	"github.com/Felamande/filesync/log"
+	"github.com/Felamande/filesync/uri"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
@@ -16,9 +18,6 @@ var logger *log.Logger
 type DirHandler func(string)
 type FileHandler func(string)
 
-
-
-
 type SyncConfig struct {
 	CoverSameName bool `json:"cover_same_name"`
 	SyncDelete    bool `json:"sync_delete"`
@@ -26,11 +25,12 @@ type SyncConfig struct {
 }
 
 type SyncPair struct {
-	Left    uri.Uri
-	Right   uri.Uri
-	Config  SyncConfig
-	watcher *fsnotify.Watcher
-	tokens  chan bool
+	Left      uri.Uri
+	Right     uri.Uri
+	Config    SyncConfig
+	watcher   *fsnotify.Watcher
+	tokens    chan bool
+	IgnoreMap map[string]bool
 }
 
 type SyncMsg struct {
@@ -60,12 +60,12 @@ func (s *Syncer) Run(config SavedConfig) {
 	}
 
 	if len(config.Pairs) == 0 {
-		logger.Info("*SyncPair.Run", "no pairs in config.json.")
+		logger.Info("no pairs in config.json.")
 		return
 	}
 
 	for _, pair := range config.Pairs {
-		err := s.NewPair(pair.Config, pair.Left, pair.Right)
+		err := s.NewPair(pair.Config, pair.Left, pair.Right, config.IgnoreExt)
 		if err != nil {
 			logger.Error(err.Error())
 			continue
@@ -73,8 +73,7 @@ func (s *Syncer) Run(config SavedConfig) {
 	}
 }
 
-func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
-
+func (s *Syncer) NewPair(config SyncConfig, source, target string, IgnoreRules []string) error {
 	lURI, err := uri.Parse(source)
 	if err != nil {
 		return err
@@ -83,12 +82,18 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 	if err != nil {
 		return err
 	}
+	var m = make(map[string]bool, 6)
+	for _, ignore := range IgnoreRules {
+		m[ignore] = true
+	}
 
 	pair := &SyncPair{
-		Left:   lURI,
-		Right:  rURI,
-		Config: config,
+		Left:      lURI,
+		Right:     rURI,
+		Config:    config,
+		IgnoreMap: m,
 	}
+	fmt.Println("s.ignore", IgnoreRules)
 	pair.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -98,16 +103,15 @@ func (s *Syncer) NewPair(config SyncConfig, source, target string) error {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Pair Uris not absolute"}
 		return err
 	}
-	if !pair.Left.Exist()  {
+	if !pair.Left.Exist() {
 		err = PairNotValidError{pair.Left.Abs(), pair.Right.Abs(), "Res of left Uri not exist"}
 		return err
-	} 
+	}
 
 	s.SyncPairs = append(s.SyncPairs, pair)
 	s.PairMap[pair.Left.Uri()] = pair.Right.Uri()
 
 	go func(p *SyncPair) {
-		fmt.Println("begin watching:", p.Left.Abs())
 		p.BeginWatch()
 	}(pair)
 
@@ -124,14 +128,12 @@ func (p *SyncPair) BeginWatch() {
 		return
 	}
 
-	fmt.Println("Start Walking: " + p.Left.Abs())
-
 	err = p.Left.Walk(
 		func(root, lDir uri.Uri) error {
 			//fmt.Println("now: " + lDir.Abs())
 			err = p.WatchLeft(lDir)
 			if err != nil {
-				logger.Error("*SyncPair.BeginWatch@walkDir", err.Error())
+				logger.Error(err.Error())
 				return nil
 			}
 			logger.Info("Add to watcher: " + lDir.Abs())
@@ -147,13 +149,11 @@ func (p *SyncPair) BeginWatch() {
 	)
 
 	if err != nil {
-		fmt.Println("walk: ", err)
 		logger.Info(err.Error())
 		return
 	}
 
 	logger.Info("Add pair : " + p.Left.Uri() + " ==> " + p.Right.Uri())
-	fmt.Println("end Walking: " + p.Left.Uri())
 	p.loopMsg()
 }
 
@@ -163,8 +163,15 @@ func (p *SyncPair) loopMsg() {
 	for {
 		select {
 		case e := <-p.watcher.Events:
-			UriString := p.formatLeftUriString(e.Name)
-			u, err := uri.Parse(UriString)
+			URIString := p.formatLeftUriString(e.Name)
+			u, err := uri.Parse(URIString)
+			ext := filepath.Ext(u.Abs())
+			if(p.IgnoreMap[ext]){
+				logger.Info("ignored",u.Uri())
+				fmt.Println("ignored",u.Uri())
+				continue
+			}
+
 			if err != nil {
 				logger.Error(err.Error())
 				continue
@@ -222,13 +229,10 @@ func (p *SyncPair) handleWrite(lFile uri.Uri) {
 		return
 	}
 
-	fmt.Println("start copying:", lFile.Abs(), "==>", rFile.Abs())
-
 	lFd, rFd := copyFile(rFile, lFile)
 	defer lFd.Close()
 	defer rFd.Close()
 
-	fmt.Println("finish copying:", lFile.Abs(), "==>", rFile.Abs())
 	logger.Info("Sync file succesfully: " + lFile.Abs() + " ==> " + rFile.Abs())
 }
 

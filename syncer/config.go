@@ -4,10 +4,10 @@ type GlobalConfig struct {
 }
 
 type SavedConfig struct {
-	Pairs   []SyncPairConfig `json:"pairs"`
-	Port    int              `json:"port"`
-	LogPath string           `json:"log_path"`
-	Ignore  []string         `json:"ignore_rules"`
+	Pairs     []SyncPairConfig `json:"pairs"`
+	Port      int              `json:"port"`
+	LogPath   string           `json:"log_path"`
+	IgnoreExt []string         `yaml:"ignore_ext"`
 }
 
 type SyncPairConfig struct {
