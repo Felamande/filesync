@@ -3,7 +3,7 @@
 *.zip
 *.7z
 *.gz
-*.yaml
+*_test.yaml
 *.exe
 *.json
 *.txt
