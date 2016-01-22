@@ -7,11 +7,11 @@ import(
     "github.com/Felamande/filesync/server/routers/base"
 )
 
-type NewPairRouter struct{
+type GetAllRouter struct{
     base.BaseJSONRouter
     
 }
 
-func (r *NewPairRouter)Get()interface{}{
+func (r *GetAllRouter)Get()interface{}{
     return syncer.Default().PairMap
 }

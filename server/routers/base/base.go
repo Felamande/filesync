@@ -8,10 +8,11 @@ import (
 type BaseJSONRouter struct {
 	tango.Log
 	tango.Json
+    JSON  map[string]interface{}
 }
 
 func (r *BaseJSONRouter) Before() {
-	// r.JSON = make(map[string]interface{})
+	r.JSON = make(map[string]interface{})
 }
 
 func (r *BaseJSONRouter) After() {

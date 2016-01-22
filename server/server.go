@@ -6,6 +6,7 @@ import (
 	"github.com/lunny/tango"
 	//middlewares
 	"github.com/Felamande/filesync/server/middlewares/time"
+	"github.com/tango-contrib/binding"
 	"github.com/tango-contrib/events"
 	"github.com/tango-contrib/renders"
 
@@ -16,15 +17,15 @@ import (
 
 var t *tango.Tango
 
-func Run(addr interface{}) {
+func Run() {
 
 	t = tango.New()
 
 	t.Use(tango.Static(tango.StaticOptions{
 		RootPath: settings.LocalStatic,
 	}))
+	t.Use(binding.Bind())
 	t.Use(new(time.TimeHandler))
-	t.Use(events.Events())
 	t.Use(tango.ClassicHandlers...)
 	t.Use(renders.New(renders.Options{
 		Reload:      true,
@@ -34,9 +35,12 @@ func Run(addr interface{}) {
 		DelimsRight: settings.DelimesRight,
 		Funcs:       utils.DefaultFuncs(),
 	}))
-
-	t.Get("/pair/all", new(pairs.NewPairRouter))
+	t.Use(events.Events())
+	t.Group("/pair", func(g *tango.Group) {
+		g.Get("/all", new(pairs.GetAllRouter))
+		g.Post("/new", new(pairs.NewPairRouter))
+	})
 	t.Get("/", new(page.HomeRouter))
 
-	t.Run(addr)
+	t.Run(settings.Port)
 }

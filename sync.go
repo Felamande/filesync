@@ -5,13 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
     
     "github.com/Felamande/filesync/settings"
 	"github.com/Felamande/filesync/log"
-	"github.com/Felamande/filesync/syncer"
 
 	svc "github.com/kardianos/service"
 )
@@ -39,34 +36,17 @@ func main() {
 		flag.Usage()
 		return
 	}
-
-	config, err := ReadConfig(settings.FileSyncConfig)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(config)
-
-	if !filepath.IsAbs(config.LogPath) {
-		config.LogPath = filepath.Join(settings.Folder, config.LogPath)
-	}
-
-	LogFile, err := os.OpenFile(filepath.Join(config.LogPath, time.Now().Format("060102.log")), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
+    
+	LogFile, err := os.OpenFile(settings.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	p := &Program{
-		Config: config,
-		Syncer: syncer.Default(),
 		Logger: log.New(LogFile, "[filesync]", log.Ldefault|log.Lmicroseconds),
 	}
 
-	if p.Syncer == nil {
-		fmt.Println("p.Syncer is nil")
-		return
-	}
 	s, err := svc.New(p, &svc.Config{
 		Name:        "Filesync",
 		DisplayName: "FileSync Service",

@@ -8,4 +8,4 @@
 *.json
 *.txt
 *.ps1
-
+*_test.ini
