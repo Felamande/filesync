@@ -15,4 +15,6 @@ func (r *HomeRouter) Get() {
     }
 	r.Data["title"] = "filesync dashboard "
     r.Tpl = "home.html"
+    
+    r.Render(r.Tpl,r.Data)
 }

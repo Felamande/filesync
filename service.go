@@ -3,10 +3,10 @@ package main
 import (
 	// "bytes"
 	"errors"
-	"fmt"
 	"io/ioutil"
+    "github.com/Felamande/filesync/settings"
+    // "github.com/Felamande/filesync/server/modules/utils"
 	yaml "gopkg.in/yaml.v2"
-    "github.com/lunny/tango"
 	"github.com/Felamande/filesync/log"
 	"github.com/Felamande/filesync/syncer"
     "github.com/Felamande/filesync/server"
@@ -17,8 +17,6 @@ type Program struct {
 	Syncer *syncer.Syncer
 	Logger *log.Logger
 	Config *syncer.SavedConfig
-    Server *tango.Tango
-	Folder string
 }
 
 //Start program
@@ -33,43 +31,12 @@ func (p *Program) run() {
     if p.Syncer == nil{
         panic("nil")
     }
-    p.Server = server.Init(p.Syncer)
 	go p.Syncer.Run(*p.Config)
-    p.Server.Run(":9000")
+    server.Run(settings.Port)
 }
 
 //Stop Stop the program.
 func (p *Program) Stop(s svc.Service) error {
-
-	// c := syncer.SavedConfig{
-	// 	Pairs: []syncer.SyncPairConfig{},
-	// }
-	// c.LogPath = p.Config.LogPath
-
-	// for _, pair := range p.Syncer.SyncPairs {
-
-	// 	c.Pairs = append(c.Pairs, syncer.SyncPairConfig{
-	// 		Left:   pair.Left.Uri(),
-	// 		Right:  pair.Right.Uri(),
-	// 		Config: pair.Config,
-	// 	})
-	// }
-	// c.Port = p.Config.Port
-	// b, err := yaml.Marshal(&c)
-	// if err != nil {
-	// 	p.Logger.Warn(err.Error())
-	// 	return err
-	// }
-	// rb, err := ioutil.ReadFile(filepath.Join(p.Folder, "config.yaml"))
-	// if err != nil {
-	// 	p.Logger.Warn(err.Error())
-	// 	return err
-	// }
-	// if bytes.Equal(b, rb) {
-	// 	p.Logger.Info("service stopped, config not been changed.")
-	// 	return nil
-	// }
-	// err = ioutil.WriteFile(filepath.Join(p.Folder, "config.yaml"), b, 0777)
 	p.Logger.Info("service stopped, config saved.")
 	return nil
 }
@@ -79,7 +46,6 @@ func ReadConfig(ConfigFile string) (*syncer.SavedConfig, error) {
 
 	config := &syncer.SavedConfig{
 		Pairs: []syncer.SyncPairConfig{},
-		Port:  20000,
 	}
 	data, err := ioutil.ReadFile(ConfigFile)
 	if err != nil {
@@ -94,8 +60,6 @@ func ReadConfig(ConfigFile string) (*syncer.SavedConfig, error) {
 	if len(config.LogPath) == 0 {
 		return nil, errors.New("Need a log path in config.yaml")
 	}
-
-	fmt.Println("Listen on port: ", config.Port)
 
 	return config, nil
 

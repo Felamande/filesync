@@ -32,5 +32,5 @@ func (r *BaseTplRouter) Before() {
 }
 
 func (r *BaseTplRouter) After() {
-    r.Render(r.Tpl,r.Data)
+    
 }

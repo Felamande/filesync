@@ -1,16 +1,18 @@
 package main
 
 import (
+    
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
+    
+    "github.com/Felamande/filesync/settings"
 	"github.com/Felamande/filesync/log"
 	"github.com/Felamande/filesync/syncer"
-	"github.com/kardianos/osext"
+
 	svc "github.com/kardianos/service"
 )
 
@@ -20,6 +22,7 @@ var help = flag.Bool("help", false, "Get help")
 var console = flag.Bool("console", false, "Print logs to the console instead of the log files.")
 
 func main() {
+    settings.Init()
 	flag.Parse()
 
 	if len(os.Args) == 1 {
@@ -37,13 +40,7 @@ func main() {
 		return
 	}
 
-	folder, err := osext.ExecutableFolder()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	config, err := ReadConfig(filepath.Join(folder, "config.yaml"))
+	config, err := ReadConfig(settings.FileSyncConfig)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -51,7 +48,7 @@ func main() {
 	fmt.Println(config)
 
 	if !filepath.IsAbs(config.LogPath) {
-		config.LogPath = filepath.Join(folder, config.LogPath)
+		config.LogPath = filepath.Join(settings.Folder, config.LogPath)
 	}
 
 	LogFile, err := os.OpenFile(filepath.Join(config.LogPath, time.Now().Format("060102.log")), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
@@ -64,7 +61,6 @@ func main() {
 		Config: config,
 		Syncer: syncer.Default(),
 		Logger: log.New(LogFile, "[filesync]", log.Ldefault|log.Lmicroseconds),
-		Folder: folder,
 	}
 
 	if p.Syncer == nil {
