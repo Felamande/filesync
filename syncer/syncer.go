@@ -13,6 +13,16 @@ import (
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
+var defaultSyncer *Syncer
+
+func Default()*Syncer{
+    return defaultSyncer
+}
+
+func init(){
+    defaultSyncer = New()
+}
+
 var logger *log.Logger
 
 type DirHandler func(string)
@@ -46,7 +56,7 @@ type Syncer struct {
 func New() *Syncer {
 	return &Syncer{
 		SyncPairs: []*SyncPair{},
-		PairMap:   make(map[string]string, 32),
+		PairMap:   make(map[string]string,32),
 	}
 }
 
@@ -168,7 +178,7 @@ func (p *SyncPair) loopMsg() {
 			ext := filepath.Ext(u.Abs())
 			if(p.IgnoreMap[ext]){
 				logger.Info("ignored",u.Uri())
-				fmt.Println("ignored",u.Uri())
+				
 				continue
 			}
 

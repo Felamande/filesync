@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/Felamande/filesync/log"
 	"github.com/Felamande/filesync/syncer"
-	"github.com/go-martini/martini"
 	"github.com/kardianos/osext"
 	svc "github.com/kardianos/service"
 )
@@ -64,8 +62,7 @@ func main() {
 
 	p := &Program{
 		Config: config,
-		Syncer: syncer.New(),
-		Server: martini.Classic(),
+		Syncer: syncer.Default(),
 		Logger: log.New(LogFile, "[filesync]", log.Ldefault|log.Lmicroseconds),
 		Folder: folder,
 	}
@@ -102,35 +99,5 @@ func main() {
 		err := svc.Control(s, action)
 		fmt.Println(err)
 	}
-
-}
-
-func HelloNewPair() string {
-	return "<!DOCTYPE html><head><script type='text/javascript' src='http://libs.baidu.com/jquery/2.0.3/jquery.min.js'></script></head><body>Hello</body>"
-}
-
-func NewPair(s *syncer.Syncer, r *http.Request, l *log.Logger) string {
-	err := r.ParseForm()
-	if err != nil {
-		return err.Error()
-	}
-
-	lName := r.FormValue("left")
-	rName := r.FormValue("right")
-	err = s.NewPair(
-		syncer.SyncConfig{true, true, true},
-		lName,
-		rName,
-		[]string{},
-	)
-	if err != nil {
-		return err.Error()
-	}
-
-	return lName + " ==> " + rName
-
-}
-
-func ServeLog() {
 
 }

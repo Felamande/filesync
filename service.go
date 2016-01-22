@@ -5,25 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	//"path/filepath"
-	"strconv"
-
 	yaml "gopkg.in/yaml.v2"
-
+    "github.com/lunny/tango"
 	"github.com/Felamande/filesync/log"
-)
-import (
 	"github.com/Felamande/filesync/syncer"
-	"github.com/go-martini/martini"
+    "github.com/Felamande/filesync/server"
 	svc "github.com/kardianos/service"
 )
 
 type Program struct {
 	Syncer *syncer.Syncer
-	Server *martini.ClassicMartini
 	Logger *log.Logger
 	Config *syncer.SavedConfig
+    Server *tango.Tango
 	Folder string
 }
 
@@ -35,21 +29,13 @@ func (p *Program) Start(s svc.Service) error {
 
 func (p *Program) run() {
 	p.Logger.Info("start service.")
-	p.Server.Map(p.Syncer)
-	p.Server.Map(p.Logger)
-	p.Server.Post("/new", NewPair)
-	p.Server.Get("/new", HelloNewPair)
 	syncer.SetLogger(p.Logger)
+    if p.Syncer == nil{
+        panic("nil")
+    }
+    p.Server = server.Init(p.Syncer)
 	go p.Syncer.Run(*p.Config)
-
-	//	go func() {
-	//		fmt.Println("watching config change")
-	//		err := p.Syncer.WatchConfigChange(filepath.Join(p.Folder, "config.yaml"))
-	//		if err != nil {
-	//			fmt.Println(err)
-	//		}
-	//	}()
-	http.ListenAndServe(":"+strconv.Itoa(p.Config.Port), p.Server)
+    p.Server.Run(":9000")
 }
 
 //Stop Stop the program.
