@@ -9,6 +9,7 @@ import (
     
     "github.com/Felamande/filesync/settings"
 	"github.com/Felamande/filesync/log"
+    // "github.com/Felamande/filesync/modules/utils"
 
 	svc "github.com/kardianos/service"
 )
@@ -37,7 +38,7 @@ func main() {
 		return
 	}
     
-	LogFile, err := os.OpenFile(settings.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
+	LogFile, err := os.OpenFile(settings.Log.File, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		fmt.Println(err)
 		return

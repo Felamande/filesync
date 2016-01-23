@@ -59,13 +59,20 @@ func SetLogger(l *log.Logger) {
 }
 
 func (s *Syncer) Run() {
+    if settings.FsCfgMgr == nil{
+        panic("nil mgr")
+    }
     config := settings.FsCfgMgr.Cfg()
+    if config == nil{
+        panic("nil config")
+    }
+    fmt.Println("run:",config)
 	if logger == nil {
 		panic("logger is nil")
 	}
 
 	if len(config.Pairs) == 0 {
-		logger.Info("no pairs in config.json.")
+		logger.Info("no pairs.")
 		return
 	}
 

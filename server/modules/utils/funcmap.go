@@ -5,15 +5,16 @@ import (
 	"path"
 
 	"github.com/Felamande/filesync/settings"
+    
 	"github.com/beego/compress"
 )
 
 func AssetJS(src string) string {
-	return path.Join(settings.Static, "js", src)
+	return path.Join(settings.Static.VirtualRoot, "js", src)
 }
 
 func DefaultFuncs() template.FuncMap {
-	_, err := compress.LoadJsonConf(settings.CompressSetting, true, settings.Host)
+	_, err := compress.LoadJsonConf(Abs(settings.Static.CompressDef), true, settings.Server.Host)
 	if err != nil {
 		panic(err)
 

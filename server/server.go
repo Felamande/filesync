@@ -22,17 +22,17 @@ func Run() {
 	t = tango.New()
 
 	t.Use(tango.Static(tango.StaticOptions{
-		RootPath: settings.LocalStatic,
+		RootPath: utils.Abs(settings.Static.VirtualRoot),
 	}))
 	t.Use(binding.Bind())
 	t.Use(new(time.TimeHandler))
 	t.Use(tango.ClassicHandlers...)
 	t.Use(renders.New(renders.Options{
 		Reload:      true,
-		Directory:   settings.TplHome,
-		Charset:     settings.TplCharset,
-		DelimsLeft:  settings.DelimesLeft,
-		DelimsRight: settings.DelimesRight,
+		Directory:   utils.Abs(settings.Template.Home),
+		Charset:     settings.Template.Charset,
+		DelimsLeft:  settings.Template.DelimesLeft,
+		DelimsRight: settings.Template.DelimesRight,
 		Funcs:       utils.DefaultFuncs(),
 	}))
 	t.Use(events.Events())
@@ -42,5 +42,5 @@ func Run() {
 	})
 	t.Get("/", new(page.HomeRouter))
 
-	t.Run(settings.Port)
+	t.Run(settings.Server.Port)
 }
