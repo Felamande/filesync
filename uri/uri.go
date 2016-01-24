@@ -53,7 +53,7 @@ func Parse(u string) (Uri, error) {
 	if err != nil {
 		return nil, ParseError{u, err.Error()}
 	}
-
+    
 	UriType, exist := protocolRegistry[urlp.Scheme]
 	if !exist {
 		return nil, ProtocolError{urlp.Scheme, "protocol not supported."}
