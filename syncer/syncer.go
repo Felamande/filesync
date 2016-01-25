@@ -77,7 +77,7 @@ func (s *Syncer) Run() {
 	}
 
 	for _, pair := range config.Pairs {
-		err := s.newPair(pair.Config, pair.Left, pair.Right, config.IgnoreExt)
+		err := s.newPair(pair.Config, pair.Left, pair.Right, pair.IgnoreExt)
 		if err != nil {
 			logger.Error(err.Error())
 			continue

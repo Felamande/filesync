@@ -1,11 +1,10 @@
 ignore_ext:
-- .tmp
-- .~tmp
-- .aria2
-- .temp
-- .crdownload
-- .downloading
-logpath: .\.log
+    -  .tmp
+    -  .~tmp
+    -  .aria2
+    -  .temp
+    -  .crdownload
+    -  .downloading
 pairs:
 - config:
     coversamename: false
@@ -13,27 +12,62 @@ pairs:
     syncrename: true
   left: local://C:/users/KiriGiri/pictures
   right: local://D:/pictures
+  ignore_ext:
+    -  .tmp
+    -  .~tmp
+    -  .aria2
+    -  .temp
+    -  .crdownload
+    -  .downloading
 - config:
     coversamename: false
     syncdelete: true
     syncrename: true
   left: local://D:/pictures
   right: local://E:/pictures
+  ignore_ext:
+    -  .tmp
+    -  .~tmp
+    -  .aria2
+    -  .temp
+    -  .crdownload
+    -  .downloading
 - config:
     coversamename: false
     syncdelete: true
     syncrename: true
   left: local://D:/music
   right: local://E:/music
+  ignore_ext:
+    -  .tmp
+    -  .~tmp
+    -  .aria2
+    -  .temp
+    -  .crdownload
+    -  .downloading
 - config:
     coversamename: false
     syncdelete: true
     syncrename: true
   left: local://D:/Books
   right: "local://E:/资料/Books"
+  ignore_ext:
+    -  .tmp
+    -  .~tmp
+    -  .aria2
+    -  .temp
+    -  .crdownload
+    -  .downloading
 - config:
     coversamename: false
     syncdelete: true
     syncrename: true
   left: "local://D:/必备"
   right: "local://E:/download/必备"
+  ignore_ext:
+    -  .tmp
+    -  .~tmp
+    -  .aria2
+    -  .temp
+    -  .crdownload
+    -  .downloading

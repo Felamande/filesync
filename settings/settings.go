@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-fsnotify/fsnotify"
 	"github.com/go-ini/ini"
-	"github.com/gosexy/yaml"
+	// "github.com/gosexy/yaml"
 	ymlread "gopkg.in/yaml.v2"
 
 	"github.com/kardianos/osext"
@@ -58,19 +58,6 @@ type setting struct {
 	DefaultVars defaultVar  `ini:"defaultvars"`
 	Admin       adminCfg    `ini:"admin"`
 	Log         logCfg      `ini:"log"`
-}
-
-type SavedConfig struct {
-	Pairs []SyncPairConfig `json:"pairs"`
-}
-
-type SyncPairConfig struct {
-	Left          string   `json:"left"`
-	Right         string   `json:"right"`
-	CoverSameName bool     `json:"cover_same_name"`
-	SyncDelete    bool     `json:"sync_delete"`
-	SyncRename    bool     `json:"sync_rename"`
-	IgnoreExt     []string `yaml:"ignore_ext"`
 }
 
 var (
@@ -125,42 +112,10 @@ func Init() {
 		Log = settingStruct.Log
 	}
 
-	FsCfgMgr = new(cfgMgr)
-	FsCfgMgr.Init()
+	// FsCfgMgr = new(cfgMgr)
+	// FsCfgMgr.Init()
 
 	go watch()
-}
-
-type cfgMgr struct {
-	cfg    *SavedConfig
-	writer *yaml.Yaml
-}
-
-func (m *cfgMgr) Init() {
-	fileSyncCfgFile := getAbs(settingStruct.Filesync.CfgFile)
-	fileSyncCfg := readConfig(fileSyncCfgFile)
-	fmt.Println(fileSyncCfg)
-
-	fsCfgWriter, err := yaml.Open(fileSyncCfgFile)
-	if err != nil {
-		panic(err)
-	}
-
-	m.cfg = fileSyncCfg
-	m.writer = fsCfgWriter
-}
-
-func (m *cfgMgr) Save() error {
-	return m.writer.Save()
-}
-
-func (m *cfgMgr) Add(c SyncPairConfig) error {
-	m.cfg.Pairs = append(m.cfg.Pairs, c)
-	return m.writer.Set(m.cfg)
-}
-
-func (m *cfgMgr) Cfg() *SavedConfig {
-	return m.cfg
 }
 
 func reload() {
