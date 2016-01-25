@@ -47,7 +47,7 @@ type adminCfg struct {
 type logCfg struct {
 	Path   string `ini:"path"`
 	Format string `ini:"format"`
-	File   string
+	File   string `ini:"-"`
 }
 
 type setting struct {
@@ -60,22 +60,17 @@ type setting struct {
 	Log         logCfg      `ini:"log"`
 }
 
-type SyncConfig struct {
-	CoverSameName bool `json:"cover_same_name"`
-	SyncDelete    bool `json:"sync_delete"`
-	SyncRename    bool `json:"sync_rename"`
-}
-
 type SavedConfig struct {
-	Pairs     []SyncPairConfig `json:"pairs"`
-	LogPath   string           `json:"log_path"`
-	IgnoreExt []string         `yaml:"ignore_ext"`
+	Pairs []SyncPairConfig `json:"pairs"`
 }
 
 type SyncPairConfig struct {
-	Left   string     `json:"left"`
-	Right  string     `json:"right`
-	Config SyncConfig `json:"config"`
+	Left          string   `json:"left"`
+	Right         string   `json:"right"`
+	CoverSameName bool     `json:"cover_same_name"`
+	SyncDelete    bool     `json:"sync_delete"`
+	SyncRename    bool     `json:"sync_rename"`
+	IgnoreExt     []string `yaml:"ignore_ext"`
 }
 
 var (
@@ -105,9 +100,9 @@ func init() {
 
 func Init() {
 	cfgFile := getAbs("./settings/settings.ini")
-    
-    cfg := new(ini.File)
-    cfg.BlockMode = false
+
+	cfg := new(ini.File)
+	cfg.BlockMode = false
 	cfg, err := ini.Load(cfgFile)
 	if err != nil {
 		panic(err)

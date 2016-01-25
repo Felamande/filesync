@@ -1,8 +1,11 @@
 package uri
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"io/ioutil"
 )
 
 type Left interface {
@@ -37,18 +40,23 @@ func TestUriParse(t *testing.T) {
 }
 
 func TestUriLocalOpen(t *testing.T) {
-	UriString := "local://D:/Dev/gopath/src/github.com/Felamande/filesync/testdata/testopen.txt"
+	tmpDir := os.TempDir()
+	Path := filepath.Join(tmpDir, "filesync/testdata")
+	File := filepath.Join(Path, "test.txt")
+	UriString := "local://" + File
+    
+	e:=os.MkdirAll(Path, 0777)
+    if e!=nil{
+        t.Error(e)
+        return
+    }
+
 	u, e := Parse(UriString)
 	if e != nil {
 		t.Error(e.Error())
 		return
 	}
 
-	//	w, e := u.OpenWrite()
-	//	if e == nil {
-	//		t.Error("Not created: ", UriString)
-	//		return
-	//	}
 	e = u.Create(false, 0777)
 	if e != nil {
 		t.Error(e.Error())
@@ -101,7 +109,7 @@ func TestUriLocalOpen(t *testing.T) {
 }
 
 func TestOpenDir(t *testing.T) {
-
+    
 }
 
 func TestWalk(t *testing.T) {
