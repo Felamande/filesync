@@ -20,6 +20,7 @@ func (r *BaseJSONRouter) After() {
 }
 
 type BaseTplRouter struct {
+    tango.Compress
 	tango.Ctx
 	tango.Log
 	renders.Renderer

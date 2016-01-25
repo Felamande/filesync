@@ -20,15 +20,15 @@ var t *tango.Tango
 func Run() {
 
 	t = tango.New()
-
+    
+    t.Use(new(time.TimeHandler))
 	t.Use(tango.Static(tango.StaticOptions{
-		RootPath: utils.Abs(settings.Static.VirtualRoot),
+		RootPath: utils.Abs(settings.Static.LocalRoot),
 	}))
 	t.Use(binding.Bind())
-	t.Use(new(time.TimeHandler))
 	t.Use(tango.ClassicHandlers...)
 	t.Use(renders.New(renders.Options{
-		Reload:      true,
+		Reload:      settings.Template.Reload,
 		Directory:   utils.Abs(settings.Template.Home),
 		Charset:     settings.Template.Charset,
 		DelimsLeft:  settings.Template.DelimesLeft,
