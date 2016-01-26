@@ -1,8 +1,12 @@
 package settings
 
 import (
+	// "github.com/Felamande/filesync/server/modules/utils"
+	"encoding/hex"
+	"io"
+    "crypto/md5"
+
 	memdb "github.com/hashicorp/go-memdb"
-    
 )
 
 type SavedConfig struct {
@@ -16,7 +20,7 @@ type SyncConfig struct {
 }
 
 type SyncPairConfig struct {
-    hash      string     
+	Hash      string     `json:"-" yaml:"-"`
 	Left      string     `json:"left"`
 	Right     string     `json:"right"`
 	IgnoreExt []string   `yaml:"ignore_ext"`
@@ -29,21 +33,16 @@ type cfgMgr struct {
 	db     *memdb.MemDB
 }
 
-func (m *cfgMgr) init(s *SavedConfig) {
+func (m *cfgMgr) Init(s *SavedConfig) {
 	m.schema = &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
 			"pairs": &memdb.TableSchema{
 				Name: "pairs",
 				Indexes: map[string]*memdb.IndexSchema{
-					"id": &memdb.IndexSchema{
-						Name:    "id",
+					"hash": &memdb.IndexSchema{
+						Name:    "hash",
 						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "Left"},
-					},
-					"left": &memdb.IndexSchema{
-						Name:    "left",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Left"},
+						Indexer: &memdb.StringFieldIndex{Field: "Hash"},
 					},
 				},
 			},
@@ -55,33 +54,57 @@ func (m *cfgMgr) init(s *SavedConfig) {
 		panic(err)
 	}
 	m.db = db
+	for _, val := range s.Pairs {
+		m.Add(val)
+	}
+
 }
 
 func (m *cfgMgr) Add(p *SyncPairConfig) error {
 	txn := m.db.Txn(true)
+	p.Hash = mD5(p.Left, p.Right)
 	err := txn.Insert("pairs", p)
 	if err != nil {
 		return err
 	}
 	txn.Commit()
-    return nil
+	return nil
 }
 
 func (m *cfgMgr) Save() error {
 	txn := m.db.Txn(false)
 	defer txn.Abort()
 
-	r, err := txn.Get("pairs", "left")
+	r, err := txn.Get("pairs", "hash")
 	if err != nil {
 		return err
 	}
+    saved:=new(SavedConfig)
 	for rr := r.Next(); rr != nil; rr = r.Next() {
-		if s, ok := rr.(*SyncPairConfig); ok {
+		if s, ok := rr.(*SyncPairConfig); !ok {
 			continue
 		} else {
-			m.cfg.Pairs = append(m.cfg.Pairs, s)
+			saved.Pairs = append(saved.Pairs, s)
 		}
 	}
-    return nil
+    
+	return nil
 
+}
+
+func mD5(source ...interface{}) string {
+	ctx := md5.New()
+	for _, s := range source {
+		switch ss := s.(type) {
+		case io.Reader:
+			io.Copy(ctx, ss)
+		case string:
+			ctx.Write([]byte(ss))
+		case []byte:
+			ctx.Write(ss)
+
+		}
+	}
+
+	return hex.EncodeToString(ctx.Sum(nil))
 }
