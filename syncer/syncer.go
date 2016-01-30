@@ -7,20 +7,21 @@ import (
 	"runtime"
 	"strings"
 	"time"
-    "github.com/Felamande/filesync/settings"
+
 	"github.com/Felamande/filesync/log"
+	"github.com/Felamande/filesync/settings"
 	"github.com/Felamande/filesync/uri"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
 var defaultSyncer *Syncer
 
-func Default()*Syncer{
-    return defaultSyncer
+func Default() *Syncer {
+	return defaultSyncer
 }
 
-func init(){
-    defaultSyncer = New()
+func init() {
+	defaultSyncer = New()
 }
 
 var logger *log.Logger
@@ -50,7 +51,7 @@ type Syncer struct {
 func New() *Syncer {
 	return &Syncer{
 		SyncPairs: []*SyncPair{},
-		PairMap:   make(map[string]string,32),
+		PairMap:   make(map[string]string, 32),
 	}
 }
 
@@ -59,14 +60,14 @@ func SetLogger(l *log.Logger) {
 }
 
 func (s *Syncer) Run() {
-    if settings.FsCfgMgr == nil{
-        panic("nil mgr")
-    }
-    config := settings.FsCfgMgr.Cfg()
-    if config == nil{
-        panic("nil config")
-    }
-    fmt.Println("run:",config)
+	if settings.FsCfgMgr == nil {
+		panic("nil mgr")
+	}
+	config := settings.FsCfgMgr.Cfg()
+	if config == nil {
+		panic("nil config")
+	}
+	fmt.Println("run:", config)
 	if logger == nil {
 		panic("logger is nil")
 	}
@@ -86,20 +87,20 @@ func (s *Syncer) Run() {
 }
 
 func (s *Syncer) NewPair(config settings.SyncConfig, source, target string, IgnoreRules []string) error {
-    err :=s.newPair(config,source,target,IgnoreRules)
-    if err!=nil{
-        return err
-    }
-    err = settings.FsCfgMgr.Add(settings.SyncPairConfig{
-        Left:source,
-        Right:target,
-        Config:config,
-    })
-    if err!=nil{
-        return err
-    }
-    // return settings.FsCfgMgr.Save()
-    return nil
+	err := s.newPair(config, source, target, IgnoreRules)
+	if err != nil {
+		return err
+	}
+	err = settings.FsCfgMgr.Add(settings.SyncPairConfig{
+		Left:   source,
+		Right:  target,
+		Config: config,
+	})
+	if err != nil {
+		return err
+	}
+	// return settings.FsCfgMgr.Save()
+	return nil
 }
 
 func (s *Syncer) newPair(config settings.SyncConfig, source, target string, IgnoreRules []string) error {
@@ -150,7 +151,7 @@ func (p *SyncPair) BeginWatch() {
 	var err error
 
 	p.watcher, err = fsnotify.NewWatcher()
-	p.tokens = make(chan bool, runtime.NumCPU())
+	//p.tokens = make(chan bool, runtime.NumCPU())
 	if err != nil {
 		logger.Error(err.Error())
 		return
@@ -194,9 +195,9 @@ func (p *SyncPair) loopMsg() {
 			URIString := p.formatLeftUriString(e.Name)
 			u, err := uri.Parse(URIString)
 			ext := filepath.Ext(u.Abs())
-			if(p.IgnoreMap[ext]){
-				logger.Info("ignored",u.Uri())
-				
+			if p.IgnoreMap[ext] {
+				logger.Info("ignored", u.Uri())
+
 				continue
 			}
 
@@ -293,7 +294,7 @@ func (p *SyncPair) handleCreate(lName uri.Uri) {
 	defer lFd.Close()
 	defer rFd.Close()
 
-	logger.Info("Sync  succesfully: " + lName.Abs() + " ==> " + rName.Abs())
+	logger.Info("Sync  succesfully:", lName.Abs(), "==>", rName.Abs())
 
 }
 
@@ -407,81 +408,3 @@ func copyFile(rFile, lFile uri.Uri) (io.ReadCloser, io.WriteCloser) {
 	io.Copy(rFd, lFd)
 	return lFd, rFd
 }
-
-// func (s *Syncer) WatchConfigChange(file string) error {
-// 	watcher, err := fsnotify.NewWatcher()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = watcher.Add(file)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("start watching config file: " + file)
-// 	for {
-// 		select {
-// 		case e := <-watcher.Events:
-// 			fmt.Println(e.Op, e.Name)
-// 			if e.Op == fsnotify.Remove || e.Op == fsnotify.Rename {
-// 				continue
-// 			}
-// 			go s.updateConfig(file)
-// 		case e := <-watcher.Errors:
-// 			logger.Error(e.Error())
-// 		}
-// 	}
-
-// }
-
-// func (s *Syncer) updateConfig(file string) {
-// 	data := make([]byte, 4096)
-// 	var err error
-// 	timeout := 0
-// 	for {
-// 		if timeout > 100 {
-// 			return
-// 		}
-// 		data, err = ioutil.ReadFile(file)
-// 		if err != nil {
-// 			timeout++
-// 		} else {
-// 			break
-// 		}
-
-// 	}
-
-// 	config := &SavedConfig{
-// 		Pairs: []SyncPairConfig{},
-// 	}
-
-// 	err = yaml.Unmarshal(data, config)
-// 	if err != nil {
-// 		fmt.Println("unmarshal failed: ", err.Error())
-// 		logger.Info(err.Error())
-// 		return
-// 	}
-
-// 	for _, p := range config.Pairs {
-// 		right, exist := s.PairMap[p.Left]
-// 		if !exist {
-// 			err = s.NewPair(p.Config, p.Left, p.Right)
-// 			if err != nil {
-// 				logger.Error(err.Error())
-// 				continue
-// 			}
-// 			fmt.Println("update: ", p.Config, p.Left, p.Right)
-// 			logger.Info("config updated.")
-// 		} else {
-// 			if right == p.Right {
-// 				continue
-// 			}
-
-// 			err = s.NewPair(p.Config, p.Left, p.Right)
-// 			if err != nil {
-// 				logger.Error(err.Error())
-// 			}
-// 			fmt.Println("update: ", p.Config, p.Left, p.Right)
-// 			logger.Info("config updated.")
-// 		}
-// 	}
-// }

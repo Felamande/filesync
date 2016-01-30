@@ -48,8 +48,6 @@ func (r *NewPairRouter) Post() interface{} {
         r.JSON["sucess"] = true
         r.JSON["err"] = nil
     }
-    
-    
-    
+
     return r.JSON
 }

@@ -1,3 +1,46 @@
 {%template "base.html" . %}
-<body>{% .msg %}</body>
+<body>
+<div class="container-fluid">
+    {% .msg %}
+    <affix offset="">
+  <nav class="sidebar">
+    <ul>
+      <li>{{msg}}</li>
+      <li>...</li>
+      <li>...</li>
+    </ul>
+  </nav>
+</affix>
+<button class="btn btn-default btn-lg"
+  @click="showRight = !showRight" >
+  Click to toggle alert on right
+</button>
+<alert type="success" >
+  <strong>Well Done!</strong>
+  You successfully read this important alert message.
+</alert>
+<alert
+  :show.sync="showTop"
+  :duration="3000"
+  type="danger"
+  width="400px"
+  placement="top"
+  dismissable>
+  <span class="icon-info-circled alert-icon-float-left"></span>
+  <strong>Heads up!</strong>
+  <p>This alert needs your attention.</p>
+</alert>
+<tabs>
+  <tab header="one">
+    ...
+  </tab>
+  <tab header="two">
+    ...
+  </tab>
+  <tab header="three">
+    ...
+  </tab>
+</tabs>
+</div>
+</body>
 </html>

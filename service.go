@@ -7,6 +7,7 @@ import (
 	"github.com/Felamande/filesync/syncer"
     "github.com/Felamande/filesync/server"
 	svc "github.com/kardianos/service"
+
 )
 
 type Program struct {
