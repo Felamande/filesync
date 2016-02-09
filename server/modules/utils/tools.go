@@ -4,9 +4,7 @@ import (
     "path/filepath"
     "github.com/Felamande/filesync/settings"
     "hash/adler32"
-    "crypto/md5"
-    "io"
-    "encoding/hex"
+
     "fmt"
     
 )

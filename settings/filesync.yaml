@@ -1,73 +1,66 @@
-ignore_ext:
-    -  .tmp
-    -  .~tmp
-    -  .aria2
-    -  .temp
-    -  .crdownload
-    -  .downloading
 pairs:
-- config:
-    coversamename: false
-    syncdelete: true
-    syncrename: true
-  left: local://C:/users/KiriGiri/pictures
+- left: local://C:/users/KiriGiri/pictures
   right: local://D:/pictures
-  ignore_ext:
-    -  .tmp
-    -  .~tmp
-    -  .aria2
-    -  .temp
-    -  .crdownload
-    -  .downloading
-- config:
+  config:
     coversamename: false
     syncdelete: true
     syncrename: true
-  left: local://D:/pictures
-  right: local://E:/pictures
   ignore_ext:
-    -  .tmp
-    -  .~tmp
-    -  .aria2
-    -  .temp
-    -  .crdownload
-    -  .downloading
-- config:
+  - .tmp
+  - .~tmp
+  - .aria2
+  - .temp
+  - .crdownload
+  - .downloading
+- left: local://D:/pictures
+  right: local://M:/pictures
+  config:
     coversamename: false
     syncdelete: true
     syncrename: true
-  left: local://D:/music
-  right: local://E:/music
   ignore_ext:
-    -  .tmp
-    -  .~tmp
-    -  .aria2
-    -  .temp
-    -  .crdownload
-    -  .downloading
-- config:
+  - .tmp
+  - .~tmp
+  - .aria2
+  - .temp
+  - .crdownload
+  - .downloading
+- left: local://D:/music
+  right: local://M:/music
+  config:
     coversamename: false
     syncdelete: true
     syncrename: true
-  left: local://D:/Books
-  right: "local://E:/资料/Books"
   ignore_ext:
-    -  .tmp
-    -  .~tmp
-    -  .aria2
-    -  .temp
-    -  .crdownload
-    -  .downloading
-- config:
+  - .tmp
+  - .~tmp
+  - .aria2
+  - .temp
+  - .crdownload
+  - .downloading
+- left: local://D:/Books
+  right: local://M:/资料/books
+  config:
     coversamename: false
     syncdelete: true
     syncrename: true
-  left: "local://D:/必备"
-  right: "local://E:/download/必备"
   ignore_ext:
-    -  .tmp
-    -  .~tmp
-    -  .aria2
-    -  .temp
-    -  .crdownload
-    -  .downloading
+  - .tmp
+  - .~tmp
+  - .aria2
+  - .temp
+  - .crdownload
+  - .downloading
+- left: local://D:/必备
+  right: local://M:/download/必备
+  config:
+    coversamename: false
+    syncdelete: true
+    syncrename: true
+  ignore_ext:
+  - .tmp
+  - .~tmp
+  - .aria2
+  - .temp
+  - .crdownload
+  - .downloading

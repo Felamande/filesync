@@ -10,12 +10,15 @@ import (
 
 )
 
+
+
 type Program struct {
 	Logger *log.Logger
 }
 
 //Start program
 func (p *Program) Start(s svc.Service) error {
+    
 	go p.run()
 	return nil
 }

@@ -1,7 +1,7 @@
 package page
 
 import (
-    "net/http"
+    // "net/http"
 	"github.com/tango-contrib/renders"
 	"github.com/Felamande/filesync/server/routers/base"
 )

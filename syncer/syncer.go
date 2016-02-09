@@ -91,7 +91,7 @@ func (s *Syncer) NewPair(config settings.SyncConfig, source, target string, Igno
 	if err != nil {
 		return err
 	}
-	err = settings.FsCfgMgr.Add(settings.SyncPairConfig{
+	err = settings.FsCfgMgr.Add(&settings.SyncPairConfig{
 		Left:   source,
 		Right:  target,
 		Config: config,

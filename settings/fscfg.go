@@ -2,11 +2,10 @@ package settings
 
 import (
 	// "github.com/Felamande/filesync/server/modules/utils"
+	"crypto/md5"
 	"encoding/hex"
 	"io"
-    "crypto/md5"
-
-	memdb "github.com/hashicorp/go-memdb"
+    "errors"
 )
 
 type SavedConfig struct {
@@ -20,40 +19,33 @@ type SyncConfig struct {
 }
 
 type SyncPairConfig struct {
-	Hash      string     `json:"-" yaml:"-"`
 	Left      string     `json:"left"`
 	Right     string     `json:"right"`
-	IgnoreExt []string   `yaml:"ignore_ext"`
 	Config    SyncConfig `json:"config"`
+	IgnoreExt []string   `yaml:"ignore_ext"`
 }
 
 type cfgMgr struct {
 	cfg    *SavedConfig
-	schema *memdb.DBSchema
-	db     *memdb.MemDB
+	hashMap map[string]bool
 }
 
-func (m *cfgMgr) Init(s *SavedConfig) {
-	m.schema = &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"pairs": &memdb.TableSchema{
-				Name: "pairs",
-				Indexes: map[string]*memdb.IndexSchema{
-					"hash": &memdb.IndexSchema{
-						Name:    "hash",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "Hash"},
-					},
-				},
-			},
-		},
+func newMgr()*cfgMgr{
+    return &cfgMgr{
+        hashMap:make(map[string]bool),
+        cfg
+    }
+}
+
+func (m *cfgMgr) Cfg() *SavedConfig {
+	if m.cfg != nil {
+		return m.cfg
 	}
-	m.cfg = s
-	db, err := memdb.NewMemDB(m.schema)
-	if err != nil {
-		panic(err)
-	}
-	m.db = db
+	return new(SavedConfig)
+}
+
+func (m *cfgMgr) init() {
+    s := readConfig(getAbs(settingStruct.Filesync.CfgFile))
 	for _, val := range s.Pairs {
 		m.Add(val)
 	}
@@ -61,33 +53,16 @@ func (m *cfgMgr) Init(s *SavedConfig) {
 }
 
 func (m *cfgMgr) Add(p *SyncPairConfig) error {
-	txn := m.db.Txn(true)
-	p.Hash = mD5(p.Left, p.Right)
-	err := txn.Insert("pairs", p)
-	if err != nil {
-		return err
-	}
-	txn.Commit()
+	hash := mD5(p.Left, p.Right)
+	if m.hashMap[hash]{
+        return errors.New("duplicated pair")
+    }
+	m.cfg.Pairs = append(m.cfg.Pairs, p)
 	return nil
 }
 
 func (m *cfgMgr) Save() error {
-	txn := m.db.Txn(false)
-	defer txn.Abort()
-
-	r, err := txn.Get("pairs", "hash")
-	if err != nil {
-		return err
-	}
-    saved:=new(SavedConfig)
-	for rr := r.Next(); rr != nil; rr = r.Next() {
-		if s, ok := rr.(*SyncPairConfig); !ok {
-			continue
-		} else {
-			saved.Pairs = append(saved.Pairs, s)
-		}
-	}
-    
+	
 	return nil
 
 }

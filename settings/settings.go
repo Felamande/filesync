@@ -112,9 +112,8 @@ func Init() {
 		Log = settingStruct.Log
 	}
 
-	// FsCfgMgr = new(cfgMgr)
-	// FsCfgMgr.Init()
-
+	FsCfgMgr = new(cfgMgr)
+	FsCfgMgr.init()
 	go watch()
 }
 
